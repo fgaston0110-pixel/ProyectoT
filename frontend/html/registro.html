@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro</title>
+    <link rel="stylesheet" href="../css/registo.css">
+</head>
+
+<body>
+
+    <div class="login-container">
+
+        <form>
+
+            <h2>Registrarse</h2>
+
+            <label for="dni">Ingrese su DNI:</label>
+            <input type="text" id="dni">
+
+            <label for="apellido">Ingrese su apellido:</label>
+            <input type="text" id="apellido">
+
+            <label for="nombre">Ingrese su nombre:</label>
+            <input type="text" id="nombre">
+
+            <label for="telefono">Ingrese su teléfono:</label>
+            <input type="text" id="telefono">
+
+            <label for="edad">Ingrese su edad:</label>
+            <input type="number" id="edad">
+
+            <label for="email">Ingrese su email:</label>
+            <input type="email" id="email">
+
+            <label for="sexo">Ingrese su sexo:</label>
+            <input type="text" id="sexo">
+
+            <label for="direccion">Ingrese su dirección:</label>
+            <input type="text" id="direccion">
+
+            <label for="nacionalidad">Ingrese su nacionalidad:</label>
+            <input type="text" id="nacionalidad">
+
+            <button type="button" onclick="Poner()">
+                <strong>Continuar</strong>
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <script>
+
+        async function Poner() {
+
+            const datos = {
+
+                dni: document.getElementById("dni").value,
+                apellido: document.getElementById("apellido").value,
+                nombre: document.getElementById("nombre").value,
+                telefono: document.getElementById("telefono").value,
+                edad: document.getElementById("edad").value,
+                email: document.getElementById("email").value,
+                sexo: document.getElementById("sexo").value,
+                direccion: document.getElementById("direccion").value,
+                nacionalidad: document.getElementById("nacionalidad").value
+
+            };
+
+
+            try {
+
+                const respuesta = await fetch("http://localhost:3001/personas", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify(datos)
+
+                });
+
+
+                const resultado = await respuesta.json();
+
+                console.log(resultado);
+
+
+                if (respuesta.ok) {
+
+                    // Guardamos temporalmente el ID de la persona
+                    localStorage.setItem(
+                        "id_persona",
+                        resultado.id_persona
+                    );
+
+                    // Pasamos a la página para crear usuario
+                    window.location.href = "cuenta.html";
+
+                } else {
+
+                    alert(resultado.mensaje);
+
+                }
+
+
+            } catch (error) {
+
+                console.log(error);
+
+                alert("Error al conectar con el servidor");
+
+            }
+
+        }
+
+    </script>
+
+</body>
+
+</html>

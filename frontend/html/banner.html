@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Banner</title>
+
+    <link rel="stylesheet" href="../css/estilo.css">
+</head>
+
+<body>
+
+    <header class="header">
+
+        <div class="logo">
+
+            <div class="logo-icon">
+                🏥
+            </div>
+
+            <div>
+                <h1>Sistema de Turnos</h1>
+                <p>Centro de atención</p>
+            </div>
+
+        </div>
+
+
+        <div class="usuario-header">
+
+            <div class="usuario-icon">
+                👤
+            </div>
+
+            <div>
+
+                <strong id="nombreUsuario">
+                    Usuario
+                </strong>
+
+                <span id="rolUsuario">
+                    Paciente
+                </span>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <script>
+
+        const personaGuardada = localStorage.getItem("persona");
+        const rolGuardado = localStorage.getItem("rol");
+
+        if (personaGuardada) {
+
+            const persona = JSON.parse(personaGuardada);
+
+            document.getElementById("nombreUsuario").textContent =
+                persona.nombre + " " + persona.apellido;
+
+        }
+
+        if (rolGuardado) {
+
+            document.getElementById("rolUsuario").textContent =
+                rolGuardado;
+
+        }
+
+    </script>
+
+</body>
+
+</html>

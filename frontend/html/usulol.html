@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuario</title>
+    <link rel="stylesheet" href="../css/principal.css">
+</head>
+<body>
+    <div class="login-container">
+    <form action="">
+        <h2>Iniciar Sesión</h2>
+        <label for="usu">Ingrese su Usuario:</label>
+        <input type="text" name="usu" id="usu">
+        <br><br>
+        <label for="contr">Ingrese su contraseña:</label>
+        <input type="password" name="contr" id="contr">
+        <br><br>
+        <button type="button" onclick="Poner()"><strong>Iniciar Sesion</strong></button>
+        <br><br>
+        <button type="button" onclick="window.location.href='registro.html'"><strong>Registrarse como nuevo usuario</strong></button>
+        </div>
+
+    <script>
+        async function Poner() {
+
+        let usuario = document.getElementById("usu").value;
+        let contraseña = document.getElementById("contr").value;
+
+        try {
+
+            const respuesta = await fetch("http://localhost:3001/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    nombre: usuario,
+                    contraseña: contraseña
+                })
+            });
+
+            const resultado = await respuesta.json();
+
+            console.log(resultado);
+
+            if (respuesta.ok) {
+
+    if (respuesta.ok) {
+
+    localStorage.setItem(
+        "persona",
+        JSON.stringify(resultado.persona)
+    );
+
+    localStorage.setItem(
+        "rol",
+        resultado.rol
+    );
+
+    if (resultado.rol === "Administrador") {
+        window.location.href = "admin.html";
+    }
+    else if (resultado.rol === "Profesional") {
+        window.location.href = "profesor.html";
+    }
+    else if (resultado.rol === "Paciente") {
+        window.location.href = "alumno.html";
+    }
+    else if (resultado.rol === "Supervisor") {
+        // después hacemos su página
+    }
+
+}
+
+
+    if (resultado.rol === "Administrador") {
+
+        window.location.href = "admin.html";
+
+    }
+    else if (resultado.rol === "Profesional") {
+
+        window.location.href = "profesor.html";
+
+    }
+    else if (resultado.rol === "Paciente") {
+
+        window.location.href = "alumno.html";
+
+    }
+    else if (resultado.rol === "Supervisor") {
+
+        // Después crearemos supervisor.html
+
+    }
+
+}
+
+        } catch (error) {
+
+            console.log(error);
+            alert("Error al conectar con el servidor");
+
+        }
+        }
+    </script>
+    </form>
+</body>
+
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Paciente</title>
+
+    <link rel="stylesheet" href="../css/paciente.css">
+</head>
+
+<body>
+
+    <!-- ================= CONTENIDO PRINCIPAL ================= -->
+
+    <main class="principal">
+
+        <!-- BIENVENIDA -->
+
+        <section class="bienvenida">
+
+            <h2 id="tituloBienvenida">
+                ¡Bienvenido!
+            </h2>
+
+            <p>
+                Desde aquí podés gestionar tus turnos,
+                consultar tu historial de atenciones
+                y actualizar tus datos personales.
+            </p>
+
+        </section>
+
+
+        <h2 class="tituloAcciones">
+            ¿Qué querés hacer hoy?
+        </h2>
+
+
+        <!-- ================= TARJETAS ================= -->
+
+        <section class="tarjetas">
+
+
+            <!-- SACAR TURNO -->
+
+            <div class="tarjeta">
+
+                <div class="icono">
+                    📅
+                </div>
+
+                <h3>Sacar turno</h3>
+
+                <p>
+                    Elegí un profesional,
+                    día y horario para
+                    tu próxima consulta.
+                </p>
+
+                <button onclick="sacarTurno()">
+                    Ir
+                </button>
+
+            </div>
+
+
+            <!-- MIS TURNOS -->
+
+            <div class="tarjeta">
+
+                <div class="icono">
+                    📋
+                </div>
+
+                <h3>Mis turnos</h3>
+
+                <p>
+                    Consultá tus turnos
+                    reservados y su estado.
+                </p>
+
+                <button onclick="misTurnos()">
+                    Ver turnos
+                </button>
+
+            </div>
+
+
+            <!-- MIS ATENCIONES -->
+
+            <div class="tarjeta">
+
+                <div class="icono">
+                    🩺
+                </div>
+
+                <h3>Mis atenciones</h3>
+
+                <p>
+                    Revisá el historial de
+                    atenciones realizadas.
+                </p>
+
+                <button onclick="misAtenciones()">
+                    Ver historial
+                </button>
+
+            </div>
+
+
+            <!-- MIS DATOS -->
+
+            <div class="tarjeta">
+
+                <div class="icono">
+                    👤
+                </div>
+
+                <h3>Mis datos</h3>
+
+                <p>
+                    Consultá tus datos
+                    personales registrados.
+                </p>
+
+                <button onclick="misDatos()">
+                    Ver datos
+                </button>
+
+            </div>
+
+
+            <!-- INFORMACIÓN -->
+
+            <div class="tarjeta">
+
+                <div class="icono">
+                    ℹ️
+                </div>
+
+                <h3>Información</h3>
+
+                <p>
+                    Información útil sobre
+                    nuestra institución.
+                </p>
+
+                <button onclick="informacion()">
+                    Más info
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================= RECORDATORIO ================= -->
+
+        <section class="recordatorio">
+
+            <div class="reloj">
+                🕐
+            </div>
+
+            <div>
+
+                <strong>
+                    Recordá llegar 10 minutos antes de tu turno
+                </strong>
+
+                <p>
+                    Si no podés asistir, cancelalo con anticipación.
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script>
+
+        // ==========================================
+        // DATOS DEL USUARIO
+        // ==========================================
+
+        const personaGuardada = localStorage.getItem("persona");
+
+        if (personaGuardada) {
+
+            const persona = JSON.parse(personaGuardada);
+
+            document.getElementById("tituloBienvenida").textContent =
+                "¡Bienvenido, " + persona.nombre + "!";
+
+        }
+
+
+        // ==========================================
+        // BOTONES
+        // ==========================================
+
+        function sacarTurno() {
+
+            alert("Próximamente: sacar turno");
+
+        }
+
+
+        function misTurnos() {
+
+            alert("Próximamente: mis turnos");
+
+        }
+
+
+        function misAtenciones() {
+
+            alert("Próximamente: mis atenciones");
+
+        }
+
+
+        function misDatos() {
+
+            alert("Próximamente: mis datos");
+
+        }
+
+
+        function informacion() {
+
+            alert("Próximamente: información");
+
+        }
+
+    </script>
+
+</body>
+
+</html>

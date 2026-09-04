@@ -1,0 +1,55 @@
+module.exports = (sequelize, DataTypes) => {
+
+    const Horario = sequelize.define("Horario", {
+
+        id_horario: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true
+        },
+
+        id_profesional: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        },
+
+        dia: {
+            type: DataTypes.STRING(15),
+            allowNull: false
+        },
+
+        hora_inicio: {
+            type: DataTypes.TIME,
+            allowNull: false
+        },
+
+        hora_fin: {
+            type: DataTypes.TIME,
+            allowNull: false
+        },
+
+        disponible: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true
+        }
+
+    });
+
+    // Relaciones de Horario
+    Horario.associate = (models) => {
+
+        // Horario pertenece a un Profesional
+        Horario.belongsTo(models.Profesional, {
+            foreignKey: "id_profesional"
+        });
+
+        // Horario tiene una Sala
+        Horario.hasOne(models.Sala, {
+            foreignKey: "id_horario"
+        });
+
+    };
+
+    return Horario;
+};

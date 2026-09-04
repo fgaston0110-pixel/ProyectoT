@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis datos</title>
+    <style>
+    main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .tarjeta-paciente {
+        width: 500px;
+        max-width: 90%;
+    }
+</style>
+
+    <link rel="stylesheet" href="../css/estilo2.css">
+</head>
+
+<body>
+
+    <main>
+
+        <h1>Mis datos</h1>
+
+        <div class="tarjeta-paciente">
+
+            <h2>Información personal</h2>
+
+            <p><strong>DNI:</strong> <span id="dni"></span></p>
+
+            <p><strong>Apellido:</strong> <span id="apellido"></span></p>
+
+            <p><strong>Nombre:</strong> <span id="nombre"></span></p>
+
+            <p><strong>Teléfono:</strong> <span id="telefono"></span></p>
+
+            <p><strong>Edad:</strong> <span id="edad"></span></p>
+
+            <p><strong>Email:</strong> <span id="email"></span></p>
+
+            <p><strong>Sexo:</strong> <span id="sexo"></span></p>
+
+            <p><strong>Dirección:</strong> <span id="direccion"></span></p>
+
+            <p><strong>Nacionalidad:</strong> <span id="nacionalidad"></span></p>
+
+        </div>
+
+    </main>
+
+    <script>
+
+        const personaGuardada = localStorage.getItem("persona");
+
+        if (personaGuardada) {
+
+            const persona = JSON.parse(personaGuardada);
+
+            document.getElementById("dni").textContent = persona.dni;
+            document.getElementById("apellido").textContent = persona.apellido;
+            document.getElementById("nombre").textContent = persona.nombre;
+            document.getElementById("telefono").textContent = persona.telefono;
+            document.getElementById("edad").textContent = persona.edad;
+            document.getElementById("email").textContent = persona.email;
+            document.getElementById("sexo").textContent = persona.sexo;
+            document.getElementById("direccion").textContent = persona.direccion;
+            document.getElementById("nacionalidad").textContent = persona.nacionalidad;
+
+        } else {
+
+            document.querySelector("main").innerHTML =
+                "<h2>No se encontraron los datos del usuario.</h2>";
+
+        }
+
+    </script>
+
+</body>
+
+</html>

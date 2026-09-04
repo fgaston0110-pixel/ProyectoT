@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Agendas</title>
+    <link rel="stylesheet" href="../css/estilo2.css">
+</head>
+
+<body>
+
+
+<div class="contenedor">
+    <main>
+
+        <h1>Agregar turnos disponibles</h1>
+
+        <div class="formulario-turno">
+
+            <h2>Nuevo turno</h2>
+
+            <label>Fecha:</label>
+
+            <input type="date" id="fecha">
+
+
+            <label>Horario:</label>
+
+            <input type="time" id="hora">
+
+
+            <button class="btn-turno" onclick="agregarTurno()">
+                agregar turno
+            </button>
+
+        </div>
+
+
+        <h1>Turnos cargados</h1>
+
+        <div id="lista-turnos" class="turnos"></div>
+
+    </main>
+
+</div>
+
+
+<script>
+
+function agregarTurno() {
+
+    let fecha = document.getElementById("fecha").value;
+    let hora = document.getElementById("hora").value;
+
+    if (fecha === "" || hora === "") {
+
+        alert("Seleccione una fecha y un horario.");
+
+        return;
+    }
+
+
+    let turnos = JSON.parse(localStorage.getItem("turnosDisponibles")) || [];
+
+
+    let nuevoTurno = {
+        fecha: fecha,
+        hora: hora,
+        reservado: false
+    };
+
+
+    turnos.push(nuevoTurno);
+
+
+    localStorage.setItem(
+        "turnosDisponibles",
+        JSON.stringify(turnos)
+    );
+
+
+    document.getElementById("fecha").value = "";
+    document.getElementById("hora").value = "";
+
+
+    mostrarTurnos();
+}
+
+
+function mostrarTurnos() {
+
+    let turnos =
+        JSON.parse(localStorage.getItem("turnosDisponibles")) || [];
+
+    let lista = document.getElementById("lista-turnos");
+
+    lista.innerHTML = "";
+
+
+    turnos.forEach((turno, indice) => {
+
+        lista.innerHTML += `
+
+            <div class="turno">
+
+                <h2>Turno ${indice + 1}</h2>
+
+                <p>Fecha: ${turno.fecha}</p>
+
+                <p>Horario: ${turno.hora}</p>
+
+                <button
+                    class="btn-volver"
+                    onclick="eliminarTurno(${indice})">
+                    eliminar
+                </button>
+
+            </div>
+
+        `;
+
+    });
+}
+
+
+function eliminarTurno(indice) {
+
+    let turnos =
+        JSON.parse(localStorage.getItem("turnosDisponibles")) || [];
+
+    turnos.splice(indice, 1);
+
+    localStorage.setItem(
+        "turnosDisponibles",
+        JSON.stringify(turnos)
+    );
+
+    mostrarTurnos();
+}
+
+
+mostrarTurnos();
+
+</script>
+
+</body>
+</html>

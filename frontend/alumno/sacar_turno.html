@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Seleccionar médico</title>
+    <link rel="stylesheet" href="../css/estilo2.css">
+</head>
+
+<body>
+
+<main class="seleccion-medico">
+
+    <h1>Seleccione un médico</h1>
+
+    <!-- ESPECIALIDADES -->
+    <div class="medicos">
+
+        <button class="medico" onclick="mostrarMedicos('clinico')">
+            <h2>Médico clínico</h2>
+            <p>Consultas generales</p>
+        </button>
+
+        <button class="medico" onclick="mostrarMedicos('psicologo')">
+            <h2>Psicólogo</h2>
+            <p>Atención psicológica</p>
+        </button>
+
+        <button class="medico" onclick="mostrarMedicos('dentista')">
+            <h2>Dentista</h2>
+            <p>Atención odontológica</p>
+        </button>
+
+    </div>
+
+
+    <!-- MEDICOS DISPONIBLES -->
+
+    <div id="lista-medicos" class="lista-medicos">
+
+        <h1 id="titulo-medicos"></h1>
+
+        <div id="medicos-disponibles"></div>
+
+    </div>
+
+</main>
+
+
+<script>
+
+function mostrarMedicos(especialidad) {
+
+    let titulo = document.getElementById("titulo-medicos");
+    let lista = document.getElementById("medicos-disponibles");
+    let contenedor = document.getElementById("lista-medicos");
+
+    contenedor.style.display = "block";
+
+    if (especialidad === "clinico") {
+
+        titulo.textContent = "Médicos clínicos disponibles";
+
+        lista.innerHTML = `
+        
+            <button class="doctor" onclick="elegirMedico('Dr. Juan Pérez')">
+                <h2>Dr. Juan Pérez</h2>
+                <p>Médico clínico</p>
+            </button>
+
+            <button class="doctor" onclick="elegirMedico('Dra. María López')">
+                <h2>Dra. María López</h2>
+                <p>Médica clínica</p>
+            </button>
+
+        `;
+
+    }
+
+    if (especialidad === "psicologo") {
+
+        titulo.textContent = "Psicólogos disponibles";
+
+        lista.innerHTML = `
+        
+            <button class="doctor" onclick="elegirMedico('Lic. Carlos Gómez')">
+                <h2>Lic. Carlos Gómez</h2>
+                <p>Psicólogo</p>
+            </button>
+
+            <button class="doctor" onclick="elegirMedico('Lic. Ana Rodríguez')">
+                <h2>Lic. Ana Rodríguez</h2>
+                <p>Psicóloga</p>
+            </button>
+
+        `;
+
+    }
+
+    if (especialidad === "dentista") {
+
+        titulo.textContent = "Dentistas disponibles";
+
+        lista.innerHTML = `
+        
+            <button class="doctor" onclick="elegirMedico('Dr. Pedro Martínez')">
+                <h2>Dr. Pedro Martínez</h2>
+                <p>Dentista</p>
+            </button>
+
+            <button class="doctor" onclick="elegirMedico('Dra. Laura Fernández')">
+                <h2>Dra. Laura Fernández</h2>
+                <p>Dentista</p>
+            </button>
+
+        `;
+
+    }
+}
+
+
+function elegirMedico(nombre) {
+
+    // Guardamos el médico seleccionado
+    localStorage.setItem("medicoSeleccionado", nombre);
+
+    // Pasamos a la página de turnos
+    window.location.href = "turnos.html";
+
+}
+
+</script>
+
+</body>
+</html>

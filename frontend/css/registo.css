@@ -1,0 +1,135 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background-image: url("../img/banner.jpeg");
+    background-size: cover;          /* hace que ocupe toda la pantalla */
+    background-position: center;     /* centra la imagen */
+    background-repeat: no-repeat;
+    min-height: 100vh;               /* asegura que cubra toda la altura visible */
+    display: flex;
+    justify-content: center;
+    align-items: center;             /* centra el contenido verticalmente */
+    font-family: Arial, sans-serif;
+}
+
+.login-container {
+    background-color: #234477;
+
+    padding: 25px 35px;
+
+    border-radius: 15px;
+
+    width: 400px;
+
+    text-align: center;
+
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.login-container h2 {
+    color: #60a5fa;
+
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.login-container label {
+    display: block;
+
+    margin-top: 8px;
+    margin-bottom: 4px;
+
+    font-size: 16px;
+}
+
+.login-container input {
+    width: 230px;
+    padding: 9px;
+    border: none;
+    border-radius: 8px;
+    outline: none;
+}
+
+.login-container button {
+    width: 230px;
+    padding: 10px;
+    margin-top: 20px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.login-container button:hover {
+    background-color: #2563eb;
+
+    transform: scale(1.03);
+}
+.register-container {
+    background-color: #234477;
+    padding: 30px 40px;
+    border-radius: 15px;
+    width: 700px; /* más ancho para dos columnas */
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* dos columnas iguales */
+    gap: 20px; /* espacio entre columnas */
+}
+
+.register-container h2 {
+    grid-column: span 2; /* el título ocupa ambas columnas */
+    color: #60a5fa;
+    margin-bottom: 20px;
+}
+
+.register-container label {
+    display: block;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    font-size: 16px;
+    color: white;
+    text-align: left;
+}
+
+.register-container input {
+    width: 100%;
+    padding: 9px;
+    border: none;
+    border-radius: 8px;
+    outline: none;
+}
+
+.register-container button {
+    grid-column: span 2; /* el botón ocupa ambas columnas */
+    width: 100%;
+    padding: 10px;
+    margin-top: 20px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.register-container button:hover {
+    background-color: #2563eb;
+    transform: scale(1.03);
+}
+
+/* Responsive para celular */
+@media (max-width: 768px) {
+    .register-container {
+        grid-template-columns: 1fr;
+        width: 90%;
+    }
+}
+.login-container label {
+    color: #fffdfd;       /* celeste claro */
+    font-weight: 600;
+}

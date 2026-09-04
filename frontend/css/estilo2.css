@@ -1,0 +1,587 @@
+/*
+en esta parte modificamos el banner 
+*/
+header {
+    background-image: 
+    linear-gradient(to right, rgba(2,6,23,0.9), rgba(30,58,138,0.6)),
+    url(../img/banner.jpg);
+    background-size: cover;
+    background-position: center;
+    height: 120px;
+}
+
+/*
+FONDO GENERAL DE LA PAGINA
+*/
+body {
+    background-color: #020617;
+    margin: 0;
+}
+
+/*
+modificamos la pagina principal el recuadro que vemos 
+*/
+main {
+    background-color: #0f172a;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 12px;
+    box-shadow: 0 6px 12px rgba(240, 238, 238, 0.3);
+}
+
+h1 {
+    color: #60a5fa;
+}
+
+p {
+    color: #ffffff;
+}
+
+/*
+BOTON VOLVER
+*/
+.btn-volver {
+    background-color: #ef4444;
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    margin-top: 20px;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-volver:hover {
+    background-color: #b91c1c;
+    transform: scale(1.05);
+}
+
+/*
+MENU
+*/
+.menu {
+    background: linear-gradient(180deg, #020617, #0f172a);
+    padding: 15px;
+}
+
+.item {
+    display: block;
+    background-color: #1e293b;
+    color: #e2e8f0;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+    text-decoration: none;
+    transition: 0.3s;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.4);
+}
+
+.item:hover {
+    background-color: #3b82f6;
+    color: white;
+    transform: scale(1.05);
+}
+
+/*
+FUENTE
+*/
+* {
+    font-family: Arial, sans-serif;
+}
+
+/*
+CONTENEDOR DE LOS TURNOS
+*/
+.turnos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/*
+CADA TURNO
+*/
+.turno {
+    width: 220px;
+    padding: 20px;
+    background-color: #1e293b;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.4);
+    box-sizing: border-box;
+}
+
+/*
+TITULO DEL TURNO
+*/
+.turno h2 {
+    color: #60a5fa;
+    margin-bottom: 15px;
+}
+
+/*
+HORARIO
+*/
+.turno p {
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+/*
+BOTON SACAR TURNO
+*/
+.btn-turno {
+    background-color: #3b82f6;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.btn-turno:hover {
+    background-color: #2563eb;
+    transform: scale(1.05);
+}
+/* BOTON SACAR TURNO */
+.btn-turno {
+    background-color: #3b82f6;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+/* EFECTO AL PASAR EL MOUSE */
+.btn-turno:hover {
+    background-color: #2563eb;
+    transform: scale(1.05);
+}
+
+/* BOTON CUANDO ESTA RESERVADO */
+.btn-turno.reservado {
+    background-color: #64748b;
+    cursor: default;
+}
+
+/* BOTON CANCELAR */
+.btn-cancelar {
+    display: none;
+    background-color: #ef4444;
+    color: white;
+    padding: 10px 20px;
+    margin-left: 8px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+/* MOSTRAR CANCELAR */
+.btn-cancelar.mostrar {
+    display: inline-block;
+}
+
+/* EFECTO CANCELAR */
+.btn-cancelar:hover {
+    background-color: #b91c1c;
+    transform: scale(1.05);
+}
+/* PAGINA DE SELECCION DE MEDICO */
+
+.seleccion-medico {
+    text-align: center;
+    min-height: 400px;
+}
+
+.seleccion-medico h1 {
+    margin-bottom: 40px;
+}
+
+/* CONTENEDOR DE MEDICOS */
+
+.medicos {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 25px;
+    flex-wrap: wrap;
+}
+
+/* TARJETAS DE MEDICOS */
+
+.medico {
+    width: 220px;
+    padding: 25px 15px;
+    background-color: #1e293b;
+    border-radius: 12px;
+    text-decoration: none;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.4);
+    transition: 0.3s;
+}
+
+/* TITULO */
+
+.medico h2 {
+    color: #60a5fa;
+    margin-bottom: 15px;
+}
+
+/* DESCRIPCION */
+
+.medico p {
+    color: white;
+}
+
+/* EFECTO AL PASAR EL MOUSE */
+
+.medico:hover {
+    background-color: #3b82f6;
+    transform: scale(1.05);
+}
+
+.medico:hover h2,
+.medico:hover p {
+    color: white;
+}
+/* LISTA DE MEDICOS */
+
+.lista-medicos {
+    display: none;
+    margin-top: 40px;
+    text-align: center;
+}
+
+.lista-medicos h1 {
+    margin-bottom: 25px;
+}
+
+
+/* CONTENEDOR DE DOCTORES */
+
+#medicos-disponibles {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    flex-wrap: wrap;
+}
+
+
+/* TARJETA DEL DOCTOR */
+
+.doctor {
+    width: 230px;
+    padding: 20px;
+    background-color: #1e293b;
+    border: none;
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.4);
+    transition: 0.3s;
+}
+
+
+/* NOMBRE */
+
+.doctor h2 {
+    color: #60a5fa;
+    margin-bottom: 10px;
+}
+
+
+/* ESPECIALIDAD */
+
+.doctor p {
+    color: white;
+}
+
+
+/* EFECTO */
+
+.doctor:hover {
+    background-color: #3b82f6;
+    transform: scale(1.05);
+}
+
+.doctor:hover h2,
+.doctor:hover p {
+    color: white;
+}
+/* CONTENEDOR GENERAL */
+
+.contenedor {
+    display: flex;
+    min-height: 500px;
+}
+
+
+/* MENU LATERAL */
+
+.contenedor .menu {
+    width: 180px;
+    min-height: 500px;
+    box-sizing: border-box;
+}
+
+
+/* CONTENIDO */
+
+.contenedor main {
+    flex: 1;
+}
+
+
+/* PANEL DEL PROFESIONAL */
+
+.panel-profesional {
+    background-color: #0f172a;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 6px 12px rgba(240, 238, 238, 0.3);
+}
+
+
+/* OPCIONES */
+
+.opciones-profesional {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+
+/* TARJETAS DE OPCIONES */
+
+.opcion {
+    width: 250px;
+    padding: 25px;
+    background-color: #1e293b;
+    border-radius: 12px;
+    text-align: center;
+    text-decoration: none;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.4);
+    transition: 0.3s;
+}
+
+
+/* TITULO */
+
+.opcion h2 {
+    color: #60a5fa;
+}
+
+
+/* TEXTO */
+
+.opcion p {
+    color: white;
+}
+
+
+/* EFECTO */
+
+.opcion:hover {
+    background-color: #3b82f6;
+    transform: scale(1.05);
+}
+
+.opcion:hover h2,
+.opcion:hover p {
+    color: white;
+}
+
+
+/* FORMULARIO */
+
+.formulario-turno {
+    width: 400px;
+    margin: 20px auto 40px;
+    padding: 25px;
+    background-color: #1e293b;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.4);
+}
+
+
+/* LABEL */
+
+.formulario-turno label {
+    display: block;
+    color: white;
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 8px;
+}
+
+
+/* INPUT */
+
+.formulario-turno input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    box-sizing: border-box;
+    background-color: #0f172a;
+    color: white;
+}
+
+
+/* BOTON */
+
+.formulario-turno .btn-turno {
+    display: block;
+    margin: 25px auto 0;
+}
+/* LISTA DE PERSONAL */
+
+.personal {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 25px;
+    margin-top: 25px;
+}
+
+
+/* TARJETA DEL PERSONAL */
+
+.tarjeta-personal {
+    width: 600px;
+    background-color: #1e293b;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    box-sizing: border-box;
+}
+
+
+/* NOMBRE DEL PROFESIONAL */
+
+.tarjeta-personal h2 {
+    color: #60a5fa;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 26px;
+}
+
+
+/* SECCIONES */
+
+.datos,
+.datos-profesionales {
+    background-color: #0f172a;
+    padding: 18px;
+    border-radius: 10px;
+    margin-top: 15px;
+}
+
+
+/* TITULOS DE SECCION */
+
+.datos h3,
+.datos-profesionales h3 {
+    color: #60a5fa;
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #3b82f6;
+    padding-bottom: 8px;
+}
+
+
+/* DATOS */
+
+.tarjeta-personal p {
+    color: white;
+    margin: 10px 0;
+    font-size: 16px;
+}
+
+
+/* TEXTO EN NEGRITA */
+
+.tarjeta-personal strong {
+    color: #93c5fd;
+}
+/* LISTA DE PACIENTES */
+
+.pacientes {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 25px;
+    flex-wrap: wrap;
+    margin-top: 25px;
+}
+
+
+/* TARJETA DE CADA PACIENTE */
+
+.tarjeta-paciente {
+    width: 400px;
+    padding: 25px;
+    background-color: #1e293b;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    box-sizing: border-box;
+}
+
+
+/* NOMBRE DEL PACIENTE */
+
+.tarjeta-paciente h2 {
+    color: #60a5fa;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 24px;
+}
+
+
+/* CAJA DE DATOS */
+
+.datos-paciente {
+    background-color: #0f172a;
+    padding: 18px;
+    border-radius: 10px;
+}
+
+
+/* TITULO */
+
+.datos-paciente h3 {
+    color: #60a5fa;
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #3b82f6;
+    padding-bottom: 8px;
+}
+
+
+/* DATOS */
+
+.datos-paciente p {
+    color: white;
+    margin: 12px 0;
+    font-size: 16px;
+}
+
+
+/* NOMBRE DE LOS CAMPOS */
+
+.datos-paciente strong {
+    color: #93c5fd;
+}

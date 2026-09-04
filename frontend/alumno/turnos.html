@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="../css/estilo2.css">
+</head>
+<body>
+    <div class="turnos">
+
+    <div class="turno">
+        <h2>turno1</h2>
+        <p>horario: 08:00 AM</p>
+
+        <button class="btn-turno" onclick="reservarTurno(this)">
+            sacar turno
+        </button>
+
+        <button class="btn-cancelar" onclick="cancelarTurno(this)">
+            cancelar
+        </button>
+    </div>
+
+    <div class="turno">
+        <h2>turno2</h2>
+        <p>horario: 08:30 AM</p>
+
+        <button class="btn-turno" onclick="reservarTurno(this)">
+            sacar turno
+        </button>
+
+        <button class="btn-cancelar" onclick="cancelarTurno(this)">
+            cancelar
+        </button>
+    </div>
+
+    <div class="turno">
+        <h2>turno3</h2>
+        <p>horario: 09:00 AM</p>
+
+        <button class="btn-turno" onclick="reservarTurno(this)">
+            sacar turno
+        </button>
+
+        <button class="btn-cancelar" onclick="cancelarTurno(this)">
+            cancelar
+        </button>
+    </div>
+
+    <div class="turno">
+        <h2>turno4</h2>
+        <p>horario: 08:30 AM</p>
+
+        <button class="btn-turno" onclick="reservarTurno(this)">
+            sacar turno
+        </button>
+
+        <button class="btn-cancelar" onclick="cancelarTurno(this)">
+            cancelar
+        </button>
+    </div>
+
+</div>
+<script>
+
+let turnoReservado = null;
+
+function reservarTurno(boton) {
+
+    // Si ya hay un turno reservado, no permite reservar otro
+    if (turnoReservado !== null) {
+        alert("Ya tenés un turno reservado. Cancelalo primero para poder sacar otro.");
+        return;
+    }
+
+    // Guardamos el turno reservado
+    turnoReservado = boton;
+
+    // Cambiar texto
+    boton.textContent = "Reservado";
+
+    // Cambiar a gris
+    boton.classList.add("reservado");
+
+    // Desactivar botón
+    boton.disabled = true;
+
+    // Mostrar botón cancelar
+    let cancelar = boton.parentElement.querySelector(".btn-cancelar");
+    cancelar.classList.add("mostrar");
+}
+
+
+function cancelarTurno(boton) {
+
+    // Buscar botón sacar turno
+    let sacarTurno = boton.parentElement.querySelector(".btn-turno");
+
+    // Volver a "sacar turno"
+    sacarTurno.textContent = "sacar turno";
+
+    // Volver al color azul
+    sacarTurno.classList.remove("reservado");
+
+    // Activar botón
+    sacarTurno.disabled = false;
+
+    // Ocultar cancelar
+    boton.classList.remove("mostrar");
+
+    // Liberar el turno
+    turnoReservado = null;
+}
+
+</script>
+</div>
+</body>
+</html>
