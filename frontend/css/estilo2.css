@@ -585,3 +585,124 @@ BOTON SACAR TURNO
 .datos-paciente strong {
     color: #93c5fd;
 }
+
+#listaEspecialidades {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 25px 0;
+}
+
+/* Botones de las especialidades */
+
+#listaEspecialidades button {
+    background-color: #1e293b;
+    color: #e2e8f0;
+    padding: 14px 22px;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.15);
+}
+
+#listaEspecialidades button:hover {
+    background-color: #3b82f6;
+    color: white;
+    transform: scale(1.05);
+}
+
+/* Contenedor de profesionales */
+
+#listaMedicos {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 25px;
+    margin-top: 30px;
+}
+
+/* Tarjetas de profesionales */
+
+#listaMedicos .medico {
+    width: 250px;
+    padding: 25px 15px;
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+    box-sizing: border-box;
+    transition: 0.3s;
+}
+
+#listaMedicos .medico:hover {
+    background-color: #3b82f6;
+    transform: translateY(-5px);
+}
+
+/* Nombre del profesional */
+
+#listaMedicos .medico h3 {
+    color: #60a5fa;
+    margin: 10px 0 20px;
+    font-size: 22px;
+}
+
+#listaMedicos .medico:hover h3 {
+    color: white;
+}
+
+/* Botón elegir médico */
+
+#listaMedicos .medico button {
+    background-color: #3b82f6;
+    color: white;
+    padding: 11px 18px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+#listaMedicos .medico button:hover {
+    background-color: #2563eb;
+    transform: scale(1.05);
+}
+
+/* Mensajes */
+
+#mensaje {
+    text-align: center;
+    color: #e2e8f0;
+    margin-top: 20px;
+}
+
+/* Adaptación a celulares */
+
+@media (max-width: 600px) {
+    #listaEspecialidades {
+        flex-direction: column;
+    }
+
+    #listaEspecialidades button {
+        width: 100%;
+        max-width: 300px;
+    }
+
+    #listaMedicos .medico {
+        width: 100%;
+        max-width: 300px;
+    }
+    main h1 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+}
