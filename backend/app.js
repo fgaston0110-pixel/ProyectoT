@@ -463,6 +463,37 @@ app.get("/turnos", async (req, res) => {
     }
 });
 
+app.delete("/turnos/:id", async (req, res) => {
+
+    try {
+
+        const turno = await Turno.findByPk(
+            req.params.id
+        );
+
+        if (!turno) {
+
+            return res.status(404).json({
+                mensaje: "Turno no encontrado"
+            });
+        }
+
+        await turno.destroy();
+
+        res.json({
+            mensaje: "Turno cancelado correctamente"
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            mensaje: error.message
+        });
+
+    }
+
+});
+
 app.post("/login", async (req, res) => {
     try {
 
