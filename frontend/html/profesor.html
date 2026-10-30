@@ -1,26 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
+
 <head>
-    <title>Profesor</title>
-    <link rel="stylesheet" href="../css/estilo.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profesional</title>
 </head>
 
-<frameset rows="15%,*">
+<frameset rows="115px,*" frameborder="0" border="0">
+    <frame
+        src="banner.html"
+        name="banner"
+        title="Encabezado"
+        scrolling="no"
+        noresize
+    >
 
-    / PARTE DE ARRIBA //
-    <frame src="banner.html">
-
-    // PARTE DE ABAJO //
-    <frameset cols="15%,*">
-
-        // MENÚ IZQUIERDO //
-        <frame src="indiceprof.html">
-
-        // CONTENIDO //
-        <frame src="../profesor/principal2.html" name="contenido">
-
+    <frameset cols="260px,*" frameborder="0" border="0">
+        <frame
+            src="indiceprof.html"
+            name="menu"
+            title="Menú profesional"
+            scrolling="no"
+            noresize
+        >
+        <frame
+            src="../profesor/principal2.html"
+            name="contenido"
+            title="Contenido principal"
+            scrolling="auto"
+        >
     </frameset>
-
 </frameset>
 
 </html>

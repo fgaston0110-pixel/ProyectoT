@@ -1,15 +1,161 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="../css/estilo.css">
+    <title>Turnos de pacientes</title>
+    <link rel="stylesheet" href="../css/paciente.css">
+    <style>
+        .principal > h1 {
+            color: #60a5fa;
+            margin-bottom: 18px;
+        }
+
+        .turno {
+            min-height: 0;
+            padding: 22px;
+            border: 1px solid #64748b;
+            border-radius: 15px;
+            background: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .turno p {
+            flex: initial;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .turno button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #detalle-turno {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            margin-top: 24px;
+            padding: 20px;
+        }
+
+        #detalle-turno[hidden] {
+            display: none;
+        }
+
+        #detalle-turno h2 {
+            color: #60a5fa;
+            margin-bottom: 12px;
+        }
+    </style>
 </head>
 <body>
-    <main>
-        <h1>Holaaa Profe</h1>
-        <p>Hola buen a afssssssssssssssssssssssssssssssssssssssssssssssssssss</p>
+    <main class="principal">
+        <h1>Turnos de pacientes</h1>
+        <p id="mensaje" role="status">Cargando turnos...</p>
+        <section id="lista-turnos" class="tarjetas" aria-label="Turnos reservados"></section>
+
+        <section id="detalle-turno" aria-live="polite" hidden>
+            <h2>Detalle del turno seleccionado</h2>
+            <p><strong>Paciente:</strong> <span id="paciente"></span></p>
+            <p><strong>DNI:</strong> <span id="dni"></span></p>
+            <p><strong>Teléfono:</strong> <span id="telefono"></span></p>
+            <p><strong>Fecha:</strong> <span id="fecha"></span></p>
+            <p><strong>Hora:</strong> <span id="hora"></span></p>
+            <p><strong>Día:</strong> <span id="dia"></span></p>
+        </section>
     </main>
+
+    <script>
+        async function cargarTurnos() {
+            const idProfesional = localStorage.getItem("id_profesional");
+            const mensaje = document.getElementById("mensaje");
+            const contenedor = document.getElementById("lista-turnos");
+
+            if (!idProfesional) {
+                mensaje.textContent = "No se encontró el profesional. Inicia sesión nuevamente.";
+                return;
+            }
+
+            try {
+                const respuesta = await fetch(
+                    `http://localhost:3001/turnos/profesional/${encodeURIComponent(idProfesional)}`
+                );
+                const turnos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    throw new Error(turnos.mensaje || "No se pudieron cargar los turnos");
+                }
+
+                contenedor.replaceChildren();
+
+                if (turnos.length === 0) {
+                    mensaje.textContent = "Todavía no hay turnos reservados.";
+                    return;
+                }
+
+                mensaje.textContent = "Selecciona un turno para ver los datos del paciente.";
+
+                turnos.forEach((turno) => {
+                    const tarjeta = document.createElement("article");
+                    tarjeta.className = "turno";
+
+                    const persona = turno.Paciente && turno.Paciente.Persona;
+                    const nombre = persona
+                        ? `${persona.nombre} ${persona.apellido}`
+                        : "Paciente sin datos personales";
+                    const fecha = new Date(turno.fecha_turno);
+
+                    const resumen = document.createElement("p");
+                    resumen.textContent =
+                        `${fecha.toLocaleDateString()} ${fecha.toLocaleTimeString()} — ${nombre}`;
+
+                    const boton = document.createElement("button");
+                    boton.type = "button";
+                    boton.textContent = "Ver datos";
+                    boton.addEventListener("click", () => mostrarDetalle(turno));
+
+                    tarjeta.append(resumen, boton);
+                    contenedor.appendChild(tarjeta);
+                });
+            } catch (error) {
+                console.error("Error al cargar los turnos:", error);
+                mensaje.textContent = error.message || "No se pudieron cargar los turnos.";
+            }
+        }
+
+        function mostrarDetalle(turno) {
+            const persona = turno.Paciente && turno.Paciente.Persona;
+            const fecha = new Date(turno.fecha_turno);
+
+            document.getElementById("paciente").textContent = persona
+                ? `${persona.nombre} ${persona.apellido}`
+                : "No disponible";
+            document.getElementById("dni").textContent =
+                persona && persona.dni ? persona.dni : "No disponible";
+            document.getElementById("telefono").textContent =
+                persona && persona.telefono ? persona.telefono : "No disponible";
+            document.getElementById("fecha").textContent =
+                fecha.toLocaleDateString();
+            document.getElementById("hora").textContent =
+                fecha.toLocaleTimeString();
+            document.getElementById("dia").textContent =
+                turno.Horario ? turno.Horario.dia : "No disponible";
+            document.getElementById("detalle-turno").hidden = false;
+        }
+
+        cargarTurnos();
+    </script>
 </body>
 </html>

@@ -1,116 +1,208 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Turnos</title>
+
     <link rel="stylesheet" href="../css/estilo2.css">
 </head>
+
 <body>
-    <div class="turnos">
 
-    <div class="turno">
-        <h2>turno1</h2>
-        <p>horario: 08:00 AM</p>
+    <main>
 
-        <button class="btn-turno" onclick="reservarTurno(this)">
-            sacar turno
-        </button>
+        <h1>Turnos disponibles</h1>
 
-        <button class="btn-cancelar" onclick="cancelarTurno(this)">
-            cancelar
-        </button>
-    </div>
+        <div id="lista-turnos" class="turnos"></div>
 
-    <div class="turno">
-        <h2>turno2</h2>
-            sacar turno
-        </button>
+    </main>
 
-        <button class="btn-cancelar" onclick="cancelarTurno(this)">
-            cancelar
-        </button>
-    </div>
+    <script>
 
-    <div class="turno">
-        <h2>turno3</h2>
-        <p>horario: 09:00 AM</p>
+        async function cargarHorarios() {
 
-        <button class="btn-turno" onclick="reservarTurno(this)">
-            sacar turno
-        </button>
+            const idProfesional =
+                localStorage.getItem("id_profesional");
 
-        <button class="btn-cancelar" onclick="cancelarTurno(this)">
-            cancelar
-        </button>
-    </div>
+            if (!idProfesional) {
 
-    <div class="turno">
-        <h2>turno4</h2>
-        <p>horario: 09:30 AM</p>
+                alert("No se encontró el profesional seleccionado");
 
-        <button class="btn-turno" onclick="reservarTurno(this)">
-            sacar turno
-        </button>
+                return;
+            }
 
-        <button class="btn-cancelar" onclick="cancelarTurno(this)">
-            cancelar
-        </button>
-    </div>
+            try {
 
-</div>
-<script>
+                const respuesta =
+                    await fetch(
+                        "http://localhost:3001/horario"
+                    );
 
-let turnoReservado = null;
+                const horarios =
+                    await respuesta.json();
 
-function reservarTurno(boton) {
+                if (!respuesta.ok) {
+                    throw new Error("No se pudieron cargar los horarios");
+                }
 
-    // Si ya hay un turno reservado, no permite reservar otro
-    if (turnoReservado !== null) {
-        alert("Ya tenés un turno reservado. Cancelalo primero para poder sacar otro.");
-        return;
-    }
+                const horariosFiltrados =
+                    horarios.filter(
+                        horario =>
+                        horario.id_profesional == idProfesional &&
+                        horario.disponible
+                    );
 
-    // Guardamos el turno reservado
-    turnoReservado = boton;
+                const contenedor =
+                    document.getElementById(
+                        "lista-turnos"
+                    );
 
-    // Cambiar texto
-    boton.textContent = "Reservado";
+                contenedor.innerHTML = "";
 
-    // Cambiar a gris
-    boton.classList.add("reservado");
+                if (horariosFiltrados.length === 0) {
 
-    // Desactivar botón
-    boton.disabled = true;
+                    contenedor.innerHTML =
+                        "<p>No hay horarios disponibles.</p>";
 
-    // Mostrar botón cancelar
-    let cancelar = boton.parentElement.querySelector(".btn-cancelar");
-    cancelar.classList.add("mostrar");
-}
+                    return;
+                }
 
+                horariosFiltrados.forEach(
+                    horario => {
 
-function cancelarTurno(boton) {
+                        contenedor.innerHTML += `
 
-    // Buscar botón sacar turno
-    let sacarTurno = boton.parentElement.querySelector(".btn-turno");
+                        <div class="turno">
 
-    // Volver a "sacar turno"
-    sacarTurno.textContent = "sacar turno";
+                            <h2>${horario.dia}</h2>
 
-    // Volver al color azul
-    sacarTurno.classList.remove("reservado");
+                            <p>
+                                ${horario.hora_inicio}
+                                -
+                                ${horario.hora_fin}
+                            </p>
 
-    // Activar botón
-    sacarTurno.disabled = false;
+                            <input
+                                type="datetime-local"
+                                id="fecha-${horario.id_horario}"
+                                step="1800"
+                            >
 
-    // Ocultar cancelar
-    boton.classList.remove("mostrar");
+                            <br><br>
 
-    // Liberar el turno
-    turnoReservado = null;
-}
+                            <button
+                                class="btn-turno"
+                                onclick="reservarTurno(${horario.id_horario})"
+                            >
+                                Reservar
+                            </button>
 
-</script>
-</div>
+                        </div>
+
+                        `;
+                    }
+                );
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert(
+                    "Error al cargar los horarios"
+                );
+            }
+        }
+
+        async function reservarTurno(idHorario) {
+
+            const idPaciente =
+                localStorage.getItem(
+                    "id_paciente"
+                );
+
+            if (!idPaciente) {
+
+                alert(
+                    "No se encontró el paciente"
+                );
+
+                return;
+            }
+
+            const fechaTurno =
+                document.getElementById(
+                    `fecha-${idHorario}`
+                ).value;
+
+            if (!fechaTurno) {
+
+                alert(
+                    "Seleccione una fecha y hora"
+                );
+
+                return;
+            }
+
+            try {
+
+                const respuesta =
+                    await fetch(
+                        "http://localhost:3001/turnos",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body: JSON.stringify({
+
+                                id_paciente:
+                                    parseInt(idPaciente),
+
+                                id_horario:
+                                    parseInt(idHorario),
+
+                                fecha_turno:
+                                    fechaTurno
+
+                            })
+                        }
+                    );
+
+                const datos =
+                    await respuesta.json();
+
+                if (!respuesta.ok) {
+
+                    alert(
+                        datos.mensaje
+                    );
+
+                    return;
+                }
+
+                alert(
+                    "✅ Turno reservado correctamente"
+                );
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert(
+                    "Error al reservar el turno"
+                );
+            }
+        }
+
+        cargarHorarios();
+
+    </script>
+
 </body>
+
 </html>

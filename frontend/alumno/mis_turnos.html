@@ -3,145 +3,173 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Agendas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Turnos</title>
+
     <link rel="stylesheet" href="../css/estilo2.css">
 </head>
 
 <body>
 
-
-<div class="contenedor">
     <main>
 
-        <h1>Agregar turnos disponibles</h1>
+        <h1>Mis Turnos</h1>
 
-        <div class="formulario-turno">
-
-            <h2>Nuevo turno</h2>
-
-            <label>Fecha:</label>
-
-            <input type="date" id="fecha">
-
-
-            <label>Horario:</label>
-
-            <input type="time" id="hora">
-
-
-            <button class="btn-turno" onclick="agregarTurno()">
-                agregar turno
-            </button>
-
-        </div>
-
-
-        <h1>Turnos cargados</h1>
-
-        <div id="lista-turnos" class="turnos"></div>
+        <div id="mis-turnos" class="turnos"></div>
 
     </main>
 
+    <script>
+
+        async function cargarMisTurnos() {
+
+            const idPaciente =
+                localStorage.getItem("id_paciente");
+
+            if (!idPaciente) {
+
+                alert("No se encontró el paciente");
+
+                return;
+            }
+
+            try {
+
+                const respuesta =
+                    await fetch(
+                        `http://localhost:3001/turnos/paciente/${idPaciente}`
+                    );
+
+                if (!respuesta.ok) {
+                    throw new Error("No se pudieron cargar los turnos");
+                }
+
+                const turnos =
+                    await respuesta.json();
+
+                const contenedor =
+                    document.getElementById(
+                        "mis-turnos"
+                    );
+
+                contenedor.innerHTML = "";
+
+                if (turnos.length === 0) {
+
+                    contenedor.innerHTML = `
+                        <p>No tenés turnos reservados.</p>
+                    `;
+
+                    return;
+                }
+
+                turnos.forEach(turno => {
+
+                    const fecha =
+                        new Date(
+                            turno.fecha_turno
+                        );
+
+                    contenedor.innerHTML += `
+
+                       <div class="turno">
+
+    <h2>
+        Turno #${turno.id_turno}
+    </h2>
+
+    <p>
+        Fecha:
+        ${fecha.toLocaleDateString()}
+    </p>
+
+    <p>
+        Hora:
+        ${fecha.toLocaleTimeString()}
+    </p>
+
+    <p>
+        Día:
+        ${turno.Horario.dia}
+    </p>
+
+    <button
+        class="btn-cancelar mostrar"
+        onclick="cancelarTurno(${turno.id_turno})"
+    >
+        Cancelar turno
+    </button>
+
 </div>
 
+                    `;
+                });
 
-<script>
+            } catch (error) {
 
-function agregarTurno() {
+                console.error(error);
 
-    let fecha = document.getElementById("fecha").value;
-    let hora = document.getElementById("hora").value;
+                alert(
+                    "Error al cargar los turnos"
+                );
+            }
 
-    if (fecha === "" || hora === "") {
+        }
 
-        alert("Seleccione una fecha y un horario.");
+        cargarMisTurnos();
+
+        async function cancelarTurno(idTurno) {
+
+    const confirmar =
+        confirm(
+            "¿Desea cancelar este turno?"
+        );
+
+    if (!confirmar) {
 
         return;
     }
 
+    try {
 
-    let turnos = JSON.parse(localStorage.getItem("turnosDisponibles")) || [];
+        const respuesta =
+            await fetch(
+                `http://localhost:3001/turnos/${idTurno}?id_paciente=${
+                    encodeURIComponent(localStorage.getItem("id_paciente"))
+                }`,
+                {
+                    method: "DELETE"
+                }
+            );
 
+        const datos =
+            await respuesta.json();
 
-    let nuevoTurno = {
-        fecha: fecha,
-        hora: hora,
-        reservado: false
-    };
+        if (!respuesta.ok) {
 
+            alert(datos.mensaje);
 
-    turnos.push(nuevoTurno);
+            return;
+        }
 
+        alert(
+            "Turno cancelado correctamente"
+        );
 
-    localStorage.setItem(
-        "turnosDisponibles",
-        JSON.stringify(turnos)
-    );
+        cargarMisTurnos();
 
+    } catch (error) {
 
-    document.getElementById("fecha").value = "";
-    document.getElementById("hora").value = "";
+        console.error(error);
 
-
-    mostrarTurnos();
+        alert(
+            "Error al cancelar el turno"
+        );
+    }
 }
 
-
-function mostrarTurnos() {
-
-    let turnos =
-        JSON.parse(localStorage.getItem("turnosDisponibles")) || [];
-
-    let lista = document.getElementById("lista-turnos");
-
-    lista.innerHTML = "";
-
-
-    turnos.forEach((turno, indice) => {
-
-        lista.innerHTML += `
-
-            <div class="turno">
-
-                <h2>Turno ${indice + 1}</h2>
-
-                <p>Fecha: ${turno.fecha}</p>
-
-                <p>Horario: ${turno.hora}</p>
-
-                <button
-                    class="btn-volver"
-                    onclick="eliminarTurno(${indice})">
-                    eliminar
-                </button>
-
-            </div>
-
-        `;
-
-    });
-}
-
-
-function eliminarTurno(indice) {
-
-    let turnos =
-        JSON.parse(localStorage.getItem("turnosDisponibles")) || [];
-
-    turnos.splice(indice, 1);
-
-    localStorage.setItem(
-        "turnosDisponibles",
-        JSON.stringify(turnos)
-    );
-
-    mostrarTurnos();
-}
-
-
-mostrarTurnos();
-
-</script>
+    </script>
 
 </body>
+
 </html>

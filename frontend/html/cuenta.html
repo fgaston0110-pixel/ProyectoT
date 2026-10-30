@@ -28,6 +28,36 @@
             <label for="confirmar">Repita la contraseña:</label>
             <input type="password" id="confirmar">
 
+            <label for="rol">Tipo de usuario:</label>
+
+            <select id="rol">
+                <option value="2">Paciente</option>
+                <option value="3">Profesional</option>
+            </select>
+
+            <div id="datos-profesional" style="display:none;">
+
+                <label for="matricula">
+                    Matrícula
+                </label>
+
+                <input
+                    type="text"
+                    id="matricula"
+                >
+
+                <label for="especialidad">
+                    Especialidad
+                </label>
+
+                <select id="especialidad">
+
+                </select>
+
+            </div>
+
+            <br>
+
             <button type="button" onclick="CrearCuenta()">
                 <strong>Registrarse</strong>
             </button>
@@ -36,88 +66,239 @@
 
     </div>
 
-
     <script>
 
-        async function CrearCuenta() {
+        document
+            .getElementById("rol")
+            .addEventListener(
+                "change",
+                function () {
 
-            const usuario = document.getElementById("usuario").value;
-            const contraseña = document.getElementById("contraseña").value;
-            const confirmar = document.getElementById("confirmar").value;
+                    const bloque =
+                        document.getElementById(
+                            "datos-profesional"
+                        );
 
-            // Comprobamos que las contraseñas coincidan
-            if (contraseña !== confirmar) {
+                    if (this.value == "3") {
 
-                alert("Las contraseñas no coinciden");
-                return;
+                        bloque.style.display =
+                            "block";
 
-            }
+                    } else {
 
-            // Recuperamos el id de la persona registrada anteriormente
-            const id_persona = localStorage.getItem("id_persona");
+                        bloque.style.display =
+                            "none";
+                    }
 
-            // Comprobamos que exista
-            if (!id_persona) {
+                }
+            );
 
-                alert("No se encontró la persona registrada");
-                return;
-
-            }
-
-            const datos = {
-
-                id_persona: id_persona,
-                nombre: usuario,
-                contraseña: contraseña,
-                id_rol: 2
-
-            };
-
+        async function cargarEspecialidades() {
 
             try {
 
-                const respuesta = await fetch("http://localhost:3001/usuarios", {
+                const respuesta =
+                    await fetch(
+                        "http://localhost:3001/especialidades"
+                    );
 
-                    method: "POST",
+                const especialidades =
+                    await respuesta.json();
 
-                    headers: {
+                const select =
+                    document.getElementById(
+                        "especialidad"
+                    );
 
-                        "Content-Type": "application/json"
+                select.innerHTML = "";
 
-                    },
+                especialidades.forEach(
+                    especialidad => {
 
-                    body: JSON.stringify(datos)
+                        select.innerHTML += `
+                            <option value="${especialidad.id_especialidad}">
+                                ${especialidad.nombre}
+                            </option>
+                        `;
 
-                });
-
-
-                const resultado = await respuesta.json();
-
-                console.log(resultado);
-
-
-                if (respuesta.ok) {
-
-                    alert("Cuenta creada correctamente");
-
-                    // Eliminamos el id guardado porque ya no lo necesitamos
-                    localStorage.removeItem("id_persona");
-
-                    // Volvemos al login
-                    window.location.href = "usulol.html";
-
-                } else {
-
-                    alert(resultado.mensaje);
-
-                }
-
+                    }
+                );
 
             } catch (error) {
 
                 console.log(error);
 
-                alert("Error al conectar con el servidor");
+            }
+
+        }
+
+        cargarEspecialidades();
+
+        async function CrearCuenta() {
+
+            const usuario =
+                document.getElementById(
+                    "usuario"
+                ).value;
+
+            const contraseña =
+                document.getElementById(
+                    "contraseña"
+                ).value;
+
+            const confirmar =
+                document.getElementById(
+                    "confirmar"
+                ).value;
+
+            const rol =
+                document.getElementById(
+                    "rol"
+                ).value;
+
+            if (contraseña !== confirmar) {
+
+                alert(
+                    "Las contraseñas no coinciden"
+                );
+
+                return;
+            }
+
+            const id_persona =
+                localStorage.getItem(
+                    "id_persona"
+                );
+
+            if (!id_persona) {
+
+                alert(
+                    "No se encontró la persona registrada"
+                );
+
+                return;
+            }
+
+            try {
+
+                const respuestaUsuario =
+                    await fetch(
+                        "http://localhost:3001/usuarios",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body: JSON.stringify({
+
+                                id_persona:
+                                    parseInt(id_persona),
+
+                                nombre:
+                                    usuario,
+
+                                contraseña:
+                                    contraseña,
+
+                                id_rol:
+                                    parseInt(rol)
+
+                            })
+                        }
+                    );
+
+                const resultadoUsuario =
+                    await respuestaUsuario.json();
+
+                if (!respuestaUsuario.ok) {
+
+                    alert(
+                        resultadoUsuario.mensaje
+                    );
+
+                    return;
+                }
+
+                if (rol == "3") {
+
+                    const matricula =
+                        document.getElementById(
+                            "matricula"
+                        ).value;
+
+                    const idEspecialidad =
+                        document.getElementById(
+                            "especialidad"
+                        ).value;
+
+                    const respuestaProfesional =
+                        await fetch(
+                            "http://localhost:3001/profesional",
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                body: JSON.stringify({
+
+                                    id_persona:
+                                        parseInt(
+                                            id_persona
+                                        ),
+
+                                    matricula:
+                                        matricula,
+
+                                    id_especialidad:
+                                        parseInt(
+                                            idEspecialidad
+                                        )
+
+                                })
+
+                            }
+                        );
+
+                    const resultadoProfesional =
+                        await respuestaProfesional.json();
+
+                    if (!respuestaProfesional.ok) {
+
+                        alert(
+                            resultadoProfesional.mensaje
+                        );
+
+                        return;
+                    }
+
+                }
+
+                alert(
+                    "Cuenta creada correctamente"
+                );
+
+                localStorage.removeItem(
+                    "id_persona"
+                );
+
+                window.location.replace(
+                    "./usulol.html"
+                );
+
+            }
+            catch (error) {
+
+                console.log(error);
+
+                alert(
+                    "Error al conectar con el servidor"
+                );
 
             }
 

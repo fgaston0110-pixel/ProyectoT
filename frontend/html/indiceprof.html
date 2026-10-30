@@ -1,29 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Indice</title>
-    <link rel="stylesheet" href="../css/estilo.css">
+    <title>Menú Profesional</title>
+    <link rel="stylesheet" href="../css/paciente.css">
 </head>
 <body>
-        <body bgcolor ="#f4f6f9">
-        <div class ="menu">
-		<p><a href ="../profesor/asistencia.html" target ="contenido" class="item">Asistencia</a>
-		<P><a href ="../profesor/horarios.html" target ="contenido" class="item">Materias<a/>
-		<P><a href ="../profesor/materias.html" target ="contenido" class="item">Horarios</a>
-        <br><br>
-		<br><br>
-		<br><br>
-		<br><br>
-        <br><br>
-        <br><br>
-        <br><br>
-        <br><br>
-        <br>
-		<button onclick="window.top.location.href='usulol.html'" class="btn-volver">
-  		Volver a inicio
-		</button>
-        </div>
+    <nav class="menu" aria-label="Menú profesional">
+        <button
+            class="menu-item"
+            onclick="window.parent.frames['contenido'].location.href='../profesor/principal2.html'"
+        >
+            🏠 Inicio
+        </button>
+
+        <button
+            class="menu-item"
+            onclick="window.parent.frames['contenido'].location.href='../profesor/asistencia.html'"
+        >
+            📋 Turnos de pacientes
+        </button>
+
+        <button
+            class="menu-item"
+            onclick="window.parent.frames['contenido'].location.href='../profesor/horarios.html'"
+        >
+            🕐 Horarios
+        </button>
+
+        <button
+            class="menu-item"
+            onclick="window.parent.frames['contenido'].location.href='../profesor/materias.html'"
+        >
+            📚 Materias
+        </button>
+
+        <div class="separador"></div>
+
+        <button
+            class="btn-volver"
+            onclick="window.top.location.href='usulol.html'"
+        >
+            🚪 Cerrar sesión
+        </button>
+    </nav>
 </body>
 </html>

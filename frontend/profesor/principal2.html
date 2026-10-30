@@ -1,14 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="../css/estilo.css">
+    <title>Inicio Profesional</title>
+    <link rel="stylesheet" href="../css/paciente.css">
 </head>
 <body>
-    <main>
-    <h1>Bienvenido Profesor</h1>
+    <main class="principal">
+        <section class="bienvenida">
+            <h2 id="tituloBienvenida">¡Bienvenido!</h2>
+            <p>
+                Desde aquí podés consultar los turnos reservados por tus pacientes
+                y acceder a las secciones de horarios y materias.
+            </p>
+        </section>
+
+        <h2 class="tituloAcciones">¿Qué querés hacer hoy?</h2>
+
+        <section class="tarjetas">
+            <article class="tarjeta">
+                <div class="icono">📋</div>
+                <h3>Turnos de pacientes</h3>
+                <p>Consultá tus próximos turnos y revisá los datos de cada paciente.</p>
+                <button type="button" onclick="abrirSeccion('asistencia.html')">
+                    Ver turnos
+                </button>
+            </article>
+
+            <article class="tarjeta">
+                <div class="icono">🕐</div>
+                <h3>Horarios</h3>
+                <p>Accedé a la sección de horarios profesionales.</p>
+                <button type="button" onclick="abrirSeccion('horarios.html')">
+                    Ver horarios
+                </button>
+            </article>
+
+            <article class="tarjeta">
+                <div class="icono">📚</div>
+                <h3>Materias</h3>
+                <p>Accedé a la sección de materias.</p>
+                <button type="button" onclick="abrirSeccion('materias.html')">
+                    Ver materias
+                </button>
+            </article>
+        </section>
+
+        <section class="recordatorio">
+            <div class="reloj">🩺</div>
+            <div>
+                <strong>Atención de turnos</strong>
+                <p>Seleccioná un turno para consultar la información del paciente.</p>
+            </div>
+        </section>
     </main>
+
+    <script>
+        const personaGuardada = localStorage.getItem("persona");
+
+        if (personaGuardada) {
+            const persona = JSON.parse(personaGuardada);
+            document.getElementById("tituloBienvenida").textContent =
+                `¡Bienvenido, ${persona.nombre}!`;
+        }
+
+        function abrirSeccion(pagina) {
+            window.location.href = pagina;
+        }
+    </script>
 </body>
 </html>

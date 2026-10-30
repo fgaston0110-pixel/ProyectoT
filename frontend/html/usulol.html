@@ -23,86 +23,67 @@
 
     <script>
         async function Poner() {
+            const usuario = document.getElementById("usu").value;
+            const contraseña = document.getElementById("contr").value;
 
-        let usuario = document.getElementById("usu").value;
-        let contraseña = document.getElementById("contr").value;
+            try {
+                const respuesta = await fetch("http://localhost:3001/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        nombre: usuario,
+                        contraseña: contraseña
+                    })
+                });
 
-        try {
+                const resultado = await respuesta.json();
 
-            const respuesta = await fetch("http://localhost:3001/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    nombre: usuario,
-                    contraseña: contraseña
-                })
-            });
+                if (!respuesta.ok) {
+                    alert(resultado.mensaje || "No se pudo iniciar sesión");
+                    return;
+                }
 
-            const resultado = await respuesta.json();
+                localStorage.setItem("persona", JSON.stringify(resultado.persona));
+                localStorage.setItem("rol", resultado.rol);
+                localStorage.removeItem("id_paciente");
+                localStorage.removeItem("id_profesional");
 
-            console.log(resultado);
+                if (resultado.rol === "Administrador") {
+                    window.location.href = "admin.html";
+                } else if (resultado.rol === "Profesional") {
+                    const respuestaProfesional = await fetch(
+                        "http://localhost:3001/profesional/persona/" +
+                        resultado.persona.id_persona
+                    );
+                    const profesional = await respuestaProfesional.json();
 
-            if (respuesta.ok) {
+                    if (!respuestaProfesional.ok) {
+                        alert(profesional.mensaje || "No se encontró el profesional");
+                        return;
+                    }
 
-    if (respuesta.ok) {
+                    localStorage.setItem(
+                        "id_profesional",
+                        profesional.id_profesional
+                    );
+                    window.location.href = "profesor.html";
+                } else if (resultado.rol === "Paciente") {
+                    if (!resultado.id_paciente) {
+                        alert("La cuenta no tiene un paciente asociado");
+                        return;
+                    }
 
-    localStorage.setItem(
-        "persona",
-        JSON.stringify(resultado.persona)
-    );
-
-    localStorage.setItem(
-        "rol",
-        resultado.rol
-    );
-
-    if (resultado.rol === "Administrador") {
-        window.location.href = "admin.html";
-    }
-    else if (resultado.rol === "Profesional") {
-        window.location.href = "profesor.html";
-    }
-    else if (resultado.rol === "Paciente") {
-        window.location.href = "alumno.html";
-    }
-    else if (resultado.rol === "Supervisor") {
-        // después hacemos su página
-    }
-
-}
-
-
-    if (resultado.rol === "Administrador") {
-
-        window.location.href = "admin.html";
-
-    }
-    else if (resultado.rol === "Profesional") {
-
-        window.location.href = "profesor.html";
-
-    }
-    else if (resultado.rol === "Paciente") {
-
-        window.location.href = "alumno.html";
-
-    }
-    else if (resultado.rol === "Supervisor") {
-
-        // Después crearemos supervisor.html
-
-    }
-
-}
-
-        } catch (error) {
-
-            console.log(error);
-            alert("Error al conectar con el servidor");
-
-        }
+                    localStorage.setItem("id_paciente", resultado.id_paciente);
+                    window.location.href = "alumno.html";
+                } else if (resultado.rol === "Supervisor") {
+                    alert("La página de supervisor todavía no está disponible");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error al conectar con el servidor");
+            }
         }
     </script>
     </form>
