@@ -18,18 +18,30 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false
         },
 
+        // Relaciona la atención con un turno
+        id_turno: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            unique: true
+        },
+
+        motivo_consulta: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+
         observacion: {
-            type: DataTypes.STRING(255),
+            type: DataTypes.TEXT,
             allowNull: true
         },
 
         diagnostico: {
-            type: DataTypes.STRING(255),
+            type: DataTypes.TEXT,
             allowNull: true
         },
 
         indicaciones: {
-            type: DataTypes.STRING(255),
+            type: DataTypes.TEXT,
             allowNull: true
         },
 
@@ -51,6 +63,10 @@ module.exports = (sequelize, DataTypes) => {
         // Atencion pertenece a un Profesional
         Atencion.belongsTo(models.Profesional, {
             foreignKey: "id_profesional"
+        });
+
+        Atencion.belongsTo(models.Turno, {
+            foreignKey: "id_turno"
         });
 
     };

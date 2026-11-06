@@ -1,161 +1,176 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turnos de pacientes</title>
-    <link rel="stylesheet" href="../css/paciente.css">
-    <style>
-        .principal > h1 {
-            color: #60a5fa;
-            margin-bottom: 18px;
-        }
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de asistencia e historial</title>
+<link rel="stylesheet" href="../css/paciente.css">
+<style>
+.principal>h1{color:#60a5fa;margin-bottom:18px}.turno{min-height:0;padding:22px;border:1px solid #64748b;border-radius:15px;background:rgba(15,23,42,.9);box-shadow:0 8px 20px rgba(0,0,0,.4);display:flex;flex-direction:column;text-align:left;gap:12px}.turno h3{color:#60a5fa;margin:0}.turno p{color:#cbd5e1;margin:0;line-height:1.5}.turno button{width:100%;padding:12px;border:0;border-radius:8px;color:#fff;font-size:15px;font-weight:bold;cursor:pointer}.turno button:disabled,button:disabled{opacity:.55;cursor:not-allowed}.boton-datos,.boton-consulta{background:#2563eb}.boton-llegada{background:#ca8a04}.boton-finalizar,#guardar-atencion{background:#16a34a}.boton-ausente,#cancelar-atencion,#cerrar-historial{background:#dc2626}.estado{font-weight:bold;padding:8px;border-radius:8px;background:#1e293b}#detalle-turno,#formulario-atencion,#historial-medico{background:#1e293b;border:1px solid #334155;border-radius:12px;margin-top:24px;padding:22px;color:#fff}#detalle-turno[hidden],#formulario-atencion[hidden],#historial-medico[hidden]{display:none}#detalle-turno h2,#formulario-atencion h2,#historial-medico h2{color:#60a5fa;margin-bottom:16px}#detalle-turno p,#historial-medico p{margin:10px 0;overflow-wrap:anywhere}#mensaje,#mensaje-historial,#mensaje-atencion{color:#93c5fd;margin:15px 0}#form-atencion{display:flex;flex-direction:column;gap:15px}#form-atencion label{font-weight:bold;color:#cbd5e1}#form-atencion textarea{width:100%;padding:12px;background:#0f172a;color:#fff;border:1px solid #475569;border-radius:8px;font-size:16px;box-sizing:border-box;resize:vertical}#form-atencion textarea:focus{outline:2px solid #3b82f6}.botones-atencion{display:flex;gap:15px;flex-wrap:wrap}.botones-atencion button,#cerrar-historial{padding:12px 20px;border:0;border-radius:8px;color:white;font-weight:bold;cursor:pointer}#lista-historial{display:flex;flex-direction:column;gap:15px;margin-top:20px}.atencion-historial{background:#0f172a;padding:20px;border-radius:10px;border:1px solid #475569}.atencion-historial h3{color:#93c5fd;margin-bottom:15px}.atencion-historial p{color:#cbd5e1;line-height:1.5}
 
-        .turno {
-            min-height: 0;
-            padding: 22px;
-            border: 1px solid #64748b;
-            border-radius: 15px;
-            background: rgba(15, 23, 42, 0.9);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-            display: flex;
-            flex-direction: column;
-            text-align: left;
-        }
-
-        .turno p {
-            flex: initial;
-            color: #cbd5e1;
-            line-height: 1.5;
-        }
-
-        .turno button {
-            margin-top: 20px;
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            background: #2563eb;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        #detalle-turno {
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid #334155;
-            border-radius: 12px;
-            margin-top: 24px;
-            padding: 20px;
-        }
-
-        #detalle-turno[hidden] {
-            display: none;
-        }
-
-        #detalle-turno h2 {
-            color: #60a5fa;
-            margin-bottom: 12px;
-        }
-    </style>
+/* Nuevos mensajes y controles */
+.panel-controles{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:15px 0 18px;color:#e2e8f0}
+.panel-controles label{display:flex;flex-direction:column;gap:7px;font-weight:600}
+.panel-controles select,.panel-controles button{padding:11px 13px;border-radius:8px;border:1px solid #475569;background:#1e293b;color:#fff;font-size:15px}
+.panel-controles button{cursor:pointer;background:#2563eb;border-color:#2563eb}
+#notificacion{padding:14px 18px;margin:14px 0;border-radius:11px;border:1px solid #475569;background:#1e293b;color:#e2e8f0;line-height:1.5}
+#notificacion[hidden],#confirmar-accion[hidden]{display:none}
+#notificacion.exito{background:#052e20;border-color:#16a34a;color:#bbf7d0}
+#notificacion.error{background:#3b1018;border-color:#dc2626;color:#fecaca}
+#notificacion.info{background:#172554;border-color:#3b82f6;color:#bfdbfe}
+#confirmar-accion{margin:15px 0 20px;padding:20px;border:1px solid #f59e0b;border-radius:12px;background:#2b211b;color:#fef3c7}
+#confirmar-accion h2{font-size:20px;margin:0 0 10px}
+#confirmar-accion .acciones{display:flex;gap:12px;flex-wrap:wrap;margin-top:15px}
+#confirmar-accion button{padding:12px 18px;border:0;border-radius:8px;color:white;font-size:15px;font-weight:bold;cursor:pointer}
+#aceptar-accion{background:#dc2626}#descartar-accion{background:#475569}
+.fecha-destacada{font-size:12px;font-weight:bold;color:#93c5fd;letter-spacing:.04em;text-transform:uppercase}
+.turno button:focus-visible,#confirmar-accion button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+</style>
 </head>
 <body>
-    <main class="principal">
-        <h1>Turnos de pacientes</h1>
-        <p id="mensaje" role="status">Cargando turnos...</p>
-        <section id="lista-turnos" class="tarjetas" aria-label="Turnos reservados"></section>
-
-        <section id="detalle-turno" aria-live="polite" hidden>
-            <h2>Detalle del turno seleccionado</h2>
-            <p><strong>Paciente:</strong> <span id="paciente"></span></p>
-            <p><strong>DNI:</strong> <span id="dni"></span></p>
-            <p><strong>Teléfono:</strong> <span id="telefono"></span></p>
-            <p><strong>Fecha:</strong> <span id="fecha"></span></p>
-            <p><strong>Hora:</strong> <span id="hora"></span></p>
-            <p><strong>Día:</strong> <span id="dia"></span></p>
-        </section>
-    </main>
-
-    <script>
-        async function cargarTurnos() {
-            const idProfesional = localStorage.getItem("id_profesional");
-            const mensaje = document.getElementById("mensaje");
-            const contenedor = document.getElementById("lista-turnos");
-
-            if (!idProfesional) {
-                mensaje.textContent = "No se encontró el profesional. Inicia sesión nuevamente.";
-                return;
-            }
-
-            try {
-                const respuesta = await fetch(
-                    `http://localhost:3001/turnos/profesional/${encodeURIComponent(idProfesional)}`
-                );
-                const turnos = await respuesta.json();
-
-                if (!respuesta.ok) {
-                    throw new Error(turnos.mensaje || "No se pudieron cargar los turnos");
-                }
-
-                contenedor.replaceChildren();
-
-                if (turnos.length === 0) {
-                    mensaje.textContent = "Todavía no hay turnos reservados.";
-                    return;
-                }
-
-                mensaje.textContent = "Selecciona un turno para ver los datos del paciente.";
-
-                turnos.forEach((turno) => {
-                    const tarjeta = document.createElement("article");
-                    tarjeta.className = "turno";
-
-                    const persona = turno.Paciente && turno.Paciente.Persona;
-                    const nombre = persona
-                        ? `${persona.nombre} ${persona.apellido}`
-                        : "Paciente sin datos personales";
-                    const fecha = new Date(turno.fecha_turno);
-
-                    const resumen = document.createElement("p");
-                    resumen.textContent =
-                        `${fecha.toLocaleDateString()} ${fecha.toLocaleTimeString()} — ${nombre}`;
-
-                    const boton = document.createElement("button");
-                    boton.type = "button";
-                    boton.textContent = "Ver datos";
-                    boton.addEventListener("click", () => mostrarDetalle(turno));
-
-                    tarjeta.append(resumen, boton);
-                    contenedor.appendChild(tarjeta);
-                });
-            } catch (error) {
-                console.error("Error al cargar los turnos:", error);
-                mensaje.textContent = error.message || "No se pudieron cargar los turnos.";
-            }
+<main class="principal">
+<h1>Control de asistencia de pacientes</h1>
+<div class="panel-controles">
+<label for="filtro-turnos">Mostrar turnos
+<select id="filtro-turnos"><option value="pendientes">Pendientes de atención</option><option value="finalizados">Historial: atendidos y ausentes</option><option value="todos">Todos (hoy primero)</option><option value="hoy">Solamente hoy</option><option value="proximos">Próximos por fecha</option><option value="pasados">Anteriores por fecha</option></select></label>
+<button type="button" id="actualizar-turnos">↻ Actualizar turnos</button>
+</div>
+<div id="notificacion" hidden role="status" aria-live="polite"></div>
+<section id="confirmar-accion" hidden aria-labelledby="titulo-confirmar">
+<h2 id="titulo-confirmar">Confirmar ausencia</h2>
+<p id="texto-confirmar"></p>
+<div class="acciones"><button id="aceptar-accion" type="button">Sí, marcar ausencia</button><button id="descartar-accion" type="button">Cancelar</button></div>
+</section>
+<p id="mensaje" role="status">Cargando turnos...</p>
+<section id="lista-turnos" class="tarjetas" aria-label="Turnos de pacientes"></section>
+<section id="detalle-turno" hidden>
+<h2>Datos del paciente</h2>
+<p><strong>Paciente:</strong> <span id="paciente"></span></p>
+<p><strong>DNI:</strong> <span id="dni"></span></p>
+<p><strong>Teléfono:</strong> <span id="telefono"></span></p>
+<p><strong>Fecha:</strong> <span id="fecha"></span></p>
+<p><strong>Hora del turno:</strong> <span id="hora"></span></p>
+<p><strong>Día:</strong> <span id="dia"></span></p>
+<p><strong>Estado:</strong> <span id="estado-detalle"></span></p>
+<p><strong>Inicio real:</strong> <span id="inicio-real"></span></p>
+<p><strong>Fin real:</strong> <span id="fin-real"></span></p>
+</section>
+<section id="formulario-atencion" hidden>
+<h2>Registrar atención médica</h2>
+<p><strong>Paciente:</strong> <span id="nombre-paciente-atencion"></span></p>
+<form id="form-atencion">
+<label for="motivo-consulta">Motivo de consulta:</label><textarea id="motivo-consulta" rows="3" maxlength="2000" required></textarea>
+<label for="diagnostico">Diagnóstico:</label><textarea id="diagnostico" rows="3" maxlength="2000" required></textarea>
+<label for="observaciones">Observaciones:</label><textarea id="observaciones" rows="3" maxlength="4000"></textarea>
+<label for="indicaciones">Indicaciones:</label><textarea id="indicaciones" rows="3" maxlength="4000"></textarea>
+<div class="botones-atencion"><button type="submit" id="guardar-atencion">Guardar atención</button><button type="button" id="cancelar-atencion">Cancelar</button></div>
+</form><p id="mensaje-atencion" role="status"></p>
+</section>
+<section id="historial-medico" hidden>
+<h2>📋 Historial de atenciones</h2>
+<p><strong>Paciente:</strong> <span id="nombre-paciente-historial"></span></p>
+<p id="mensaje-historial" role="status"></p>
+<div id="lista-historial"></div>
+<button type="button" id="cerrar-historial">Cerrar historial</button>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const API="http://localhost:3001";
+const idProfesional=localStorage.getItem("id_profesional");
+let turnoSeleccionadoAtencion=null;
+let turnosCargados=[];
+let accionPendiente=null;
+let numeroCarga=0;
+function aviso(texto,tipo="info") {const nodo=$("notificacion");nodo.textContent=texto;nodo.className=tipo;nodo.hidden=false;}
+function cerrarAccion(){accionPendiente=null;$("confirmar-accion").hidden=true;$("aceptar-accion").disabled=false;}
+function soloDia(fecha){return fecha.toLocaleDateString("sv-SE");}
+function diaTurno(turno){const d=new Date(turno.fecha_turno);return Number.isNaN(d.getTime())?"":soloDia(d);}
+function ordenarTurnos(a,b){const hoy=soloDia(new Date());const da=diaTurno(a),db=diaTurno(b);const grupo=d=>d===hoy?0:d>hoy?1:2;return grupo(da)-grupo(db)||(grupo(da)===2?db.localeCompare(da):da.localeCompare(db))||(new Date(a.fecha_turno)-new Date(b.fecha_turno));}
+function pintarTurnos() {
+    const contenedor = $("lista-turnos");
+    const mensaje = $("mensaje");
+    const filtro = $("filtro-turnos").value;
+    const hoy = soloDia(new Date());
+    const finalizado = turno => ["atendido", "no_asistio"].includes(turno.estado);
+    contenedor.replaceChildren();
+    const turnos = turnosCargados.filter(turno => {
+        const dia = diaTurno(turno);
+        switch (filtro) {
+            case "pendientes": return !finalizado(turno);
+            case "finalizados": return finalizado(turno);
+            case "hoy": return dia === hoy;
+            case "proximos": return dia >= hoy;
+            case "pasados": return dia < hoy;
+            default: return true;
         }
+    }).sort((a, b) => {
+        if (filtro === "finalizados") return new Date(b.fecha_turno) - new Date(a.fecha_turno);
+        return ordenarTurnos(a,b);
+    });
+    const pendientes = turnosCargados.filter(t => !finalizado(t)).length;
+    const finalizados = turnosCargados.length - pendientes;
+    mensaje.textContent = turnos.length
+        ? `Mostrando ${turnos.length} turnos. Pendientes: ${pendientes}. Finalizados: ${finalizados}.`
+        : `No hay turnos en esta sección. Pendientes: ${pendientes}. Finalizados: ${finalizados}.`;
+    turnos.forEach(crearTarjeta);
+}
 
-        function mostrarDetalle(turno) {
-            const persona = turno.Paciente && turno.Paciente.Persona;
-            const fecha = new Date(turno.fecha_turno);
-
-            document.getElementById("paciente").textContent = persona
-                ? `${persona.nombre} ${persona.apellido}`
-                : "No disponible";
-            document.getElementById("dni").textContent =
-                persona && persona.dni ? persona.dni : "No disponible";
-            document.getElementById("telefono").textContent =
-                persona && persona.telefono ? persona.telefono : "No disponible";
-            document.getElementById("fecha").textContent =
-                fecha.toLocaleDateString();
-            document.getElementById("hora").textContent =
-                fecha.toLocaleTimeString();
-            document.getElementById("dia").textContent =
-                turno.Horario ? turno.Horario.dia : "No disponible";
-            document.getElementById("detalle-turno").hidden = false;
-        }
-
-        cargarTurnos();
-    </script>
+$("filtro-turnos").addEventListener("change",pintarTurnos);
+$("actualizar-turnos").addEventListener("click",()=>cargarTurnos());
+$("descartar-accion").addEventListener("click",cerrarAccion);
+$("aceptar-accion").addEventListener("click",async()=>{if(!accionPendiente)return;const {idTurno,estado}=accionPendiente;$("aceptar-accion").disabled=true;await cambiarEstado(idTurno,estado);cerrarAccion();});
+function pedirConfirmacion(turno,estado){accionPendiente={idTurno:turno.id_turno,estado};const persona=turno.Paciente?.Persona;const nombre=persona?`${persona.nombre} ${persona.apellido}`:"este paciente";$("texto-confirmar").textContent=`¿Querés marcar como «No asistió» a ${nombre}, con turno ${fechaLegible(turno.fecha_turno)}?`;$("confirmar-accion").hidden=false;$("confirmar-accion").scrollIntoView({behavior:"smooth",block:"nearest"});}
+function fechaLegible(value){if(!value)return "Sin registrar";const fecha=new Date(value);return Number.isNaN(fecha.getTime())?"Fecha no válida":fecha.toLocaleString("es-AR");}
+async function cargarTurnos(){
+const codigo=++numeroCarga,contenedor=$("lista-turnos"),mensaje=$("mensaje");
+if(!idProfesional){mensaje.textContent="No se encontró el profesional. Iniciá sesión nuevamente.";return;}
+mensaje.textContent="Cargando turnos...";
+try{
+const respuesta=await fetch(`${API}/turnos/profesional/${encodeURIComponent(idProfesional)}`);
+const datos=await respuesta.json();
+if(codigo!==numeroCarga)return;
+if(!respuesta.ok)throw new Error(datos.mensaje||"No se pudieron cargar los turnos.");
+if(!Array.isArray(datos))throw new Error("El servidor no devolvió una lista de turnos.");
+turnosCargados=datos;
+contenedor.replaceChildren();
+$("detalle-turno").hidden=true;
+pintarTurnos();
+}catch(error){if(codigo!==numeroCarga)return;console.error(error);mensaje.textContent="No se pudieron cargar los turnos.";aviso(error.message,"error");}
+}
+function crearTarjeta(turno){const tarjeta=document.createElement("article");tarjeta.className="turno";const persona=turno.Paciente?.Persona;const nombre=persona?`${persona.nombre} ${persona.apellido}`:"Paciente sin datos";const titulo=document.createElement("h3");titulo.textContent=nombre;const informacion=document.createElement("p");informacion.textContent=`Turno: ${fechaLegible(turno.fecha_turno)}`;const estado=document.createElement("p");estado.className="estado";estado.textContent=({reservado:"🔵 Reservado",en_espera:"🟡 En espera",en_consulta:"🩺 En consulta",atendido:"✅ Atendido",no_asistio:"🔴 No asistió"})[turno.estado]||"Estado desconocido";const etiqueta=document.createElement("span");etiqueta.className="fecha-destacada";etiqueta.textContent=diaTurno(turno)===soloDia(new Date())?"Turno de hoy":(diaTurno(turno)>soloDia(new Date())?"Próximo turno":"Turno anterior");tarjeta.append(etiqueta,titulo,informacion,estado);const botonDatos=document.createElement("button");botonDatos.type="button";botonDatos.textContent="Ver datos del paciente";botonDatos.className="boton-datos";botonDatos.addEventListener("click",()=>mostrarDetalle(turno));tarjeta.appendChild(botonDatos);
+const botonHistorial=document.createElement("button");botonHistorial.type="button";botonHistorial.textContent="📋 Ver historial médico";botonHistorial.className="boton-datos";botonHistorial.addEventListener("click",()=>mostrarHistorial(turno));tarjeta.appendChild(botonHistorial);
+if(turno.estado==="reservado"){agregarBoton(tarjeta,turno.id_turno,"Marcar llegada","en_espera","boton-llegada");agregarBoton(tarjeta,turno.id_turno,"No asistió","no_asistio","boton-ausente",turno);}
+if(turno.estado==="en_espera"){agregarBoton(tarjeta,turno.id_turno,"Iniciar consulta","en_consulta","boton-consulta");agregarBoton(tarjeta,turno.id_turno,"No asistió","no_asistio","boton-ausente",turno);}
+if(turno.estado==="en_consulta"){const botonAtencion=document.createElement("button");botonAtencion.type="button";botonAtencion.textContent="📝 Registrar atención médica";botonAtencion.className="boton-consulta";botonAtencion.addEventListener("click",()=>mostrarFormularioAtencion(turno));tarjeta.appendChild(botonAtencion);agregarBoton(tarjeta,turno.id_turno,"Finalizar atención","atendido","boton-finalizar");}
+$("lista-turnos").appendChild(tarjeta);}
+function agregarBoton(tarjeta,idTurno,texto,nuevoEstado,clase,turno=null){
+const boton=document.createElement("button");boton.type="button";boton.textContent=texto;boton.className=clase;
+boton.addEventListener("click",async()=>{
+if(nuevoEstado==="no_asistio"){pedirConfirmacion(turno,"no_asistio");return;}
+boton.disabled=true;await cambiarEstado(idTurno,nuevoEstado);boton.disabled=false;
+});tarjeta.appendChild(boton);
+}
+async function cambiarEstado(idTurno,nuevoEstado){
+try{
+const respuesta=await fetch(`${API}/turnos/${idTurno}/estado`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id_profesional:Number(idProfesional),estado:nuevoEstado})});
+const resultado=await respuesta.json();
+if(!respuesta.ok)throw new Error(resultado.mensaje||"No se pudo actualizar el estado.");
+await cargarTurnos();
+if (["atendido", "no_asistio"].includes(nuevoEstado)) $("filtro-turnos").value = "pendientes";
+const etiquetas={en_espera:"Llegada registrada correctamente.",en_consulta:"Consulta iniciada correctamente.",atendido:"Atención finalizada correctamente.",no_asistio:"Ausencia registrada correctamente."};
+aviso("✅ "+(etiquetas[nuevoEstado]||"Estado actualizado correctamente."),"exito");
+}catch(error){console.error(error);aviso("No se pudo cambiar el estado: "+error.message,"error");}
+}
+function mostrarDetalle(turno){const persona=turno.Paciente?.Persona;const fecha=new Date(turno.fecha_turno);$("paciente").textContent=persona?`${persona.nombre} ${persona.apellido}`:"No disponible";$("dni").textContent=persona?.dni||"No disponible";$("telefono").textContent=persona?.telefono||"No disponible";$("fecha").textContent=Number.isNaN(fecha.getTime())?"No disponible":fecha.toLocaleDateString("es-AR");$("hora").textContent=Number.isNaN(fecha.getTime())?"No disponible":fecha.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});$("dia").textContent=turno.Horario?.dia||"No disponible";$("estado-detalle").textContent=turno.estado||"No disponible";$("inicio-real").textContent=fechaLegible(turno.inicio_atencion);$("fin-real").textContent=fechaLegible(turno.fin_atencion);$("detalle-turno").hidden=false;}
+function mostrarFormularioAtencion(turno){turnoSeleccionadoAtencion=turno.id_turno;const persona=turno.Paciente?.Persona;$("nombre-paciente-atencion").textContent=persona?`${persona.nombre} ${persona.apellido}`:"Paciente no disponible";$("form-atencion").reset();$("mensaje-atencion").textContent="";$("guardar-atencion").disabled=false;$("formulario-atencion").hidden=false;$("formulario-atencion").scrollIntoView({behavior:"smooth",block:"start"});}
+function ocultarFormularioAtencion(){$("formulario-atencion").hidden=true;$("form-atencion").reset();turnoSeleccionadoAtencion=null;}
+$("cancelar-atencion").addEventListener("click",ocultarFormularioAtencion);
+$("form-atencion").addEventListener("submit",async evento=>{evento.preventDefault();const mensaje=$("mensaje-atencion"),boton=$("guardar-atencion");if(!turnoSeleccionadoAtencion){mensaje.textContent="Primero debés seleccionar un turno.";return;}const motivo=$("motivo-consulta").value.trim(),diagnostico=$("diagnostico").value.trim(),observacion=$("observaciones").value.trim(),indicaciones=$("indicaciones").value.trim();if(!motivo||!diagnostico){mensaje.textContent="Completá el motivo y el diagnóstico.";return;}boton.disabled=true;mensaje.textContent="Guardando atención...";try{const respuesta=await fetch(`${API}/atenciones`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id_turno:turnoSeleccionadoAtencion,motivo_consulta:motivo,diagnostico,observacion,indicaciones})});const resultado=await respuesta.json();if(!respuesta.ok)throw new Error(resultado.mensaje||"No se pudo registrar la atención");mensaje.textContent="✅ Atención médica guardada correctamente.";$("form-atencion").reset();turnoSeleccionadoAtencion=null;}catch(error){console.error(error);mensaje.textContent="Error: "+error.message;}finally{if(turnoSeleccionadoAtencion!==null)boton.disabled=false;}});
+let consultaHistorialActual=0;
+async function mostrarHistorial(turno){const numeroConsulta=++consultaHistorialActual;const seccion=$("historial-medico"),mensaje=$("mensaje-historial"),contenedor=$("lista-historial"),persona=turno.Paciente?.Persona;$("nombre-paciente-historial").textContent=persona?`${persona.nombre} ${persona.apellido}`:"Paciente no disponible";contenedor.replaceChildren();mensaje.textContent="Cargando historial médico...";seccion.hidden=false;seccion.scrollIntoView({behavior:"smooth",block:"start"});try{const respuesta=await fetch(`${API}/atenciones/paciente/${encodeURIComponent(turno.id_paciente)}?id_profesional=${encodeURIComponent(idProfesional)}`);const historial=await respuesta.json();if(numeroConsulta!==consultaHistorialActual)return;if(!respuesta.ok)throw new Error(historial.mensaje||"No se pudo obtener el historial");if(!Array.isArray(historial)||!historial.length){mensaje.textContent="Este paciente todavía no tiene atenciones registradas con este profesional.";return;}mensaje.textContent=`Se encontraron ${historial.length} atenciones.`;historial.forEach(crearTarjetaHistorial);}catch(error){if(numeroConsulta!==consultaHistorialActual)return;console.error(error);mensaje.textContent="Error: "+error.message;}}
+function crearTarjetaHistorial(atencion){const tarjeta=document.createElement("article");tarjeta.className="atencion-historial";const titulo=document.createElement("h3");titulo.textContent="Atención del "+fechaLegible(atencion.fecha_atencion);tarjeta.appendChild(titulo);[["Motivo de consulta",atencion.motivo_consulta],["Diagnóstico",atencion.diagnostico],["Observaciones",atencion.observacion],["Indicaciones",atencion.indicaciones]].forEach(([etiqueta,valor])=>{const parrafo=document.createElement("p"),negrita=document.createElement("strong"),contenido=document.createElement("span");negrita.textContent=etiqueta+": ";contenido.textContent=valor||"Sin registrar";parrafo.append(negrita,contenido);tarjeta.appendChild(parrafo);});$("lista-historial").appendChild(tarjeta);}
+$("cerrar-historial").addEventListener("click",()=>{consultaHistorialActual++;$("historial-medico").hidden=true;$("lista-historial").replaceChildren();});
+cargarTurnos();
+</script>
 </body>
 </html>

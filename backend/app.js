@@ -1,6 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const { Op } = require("sequelize");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    throw new Error("Falta JWT_SECRET (mínimo 32 caracteres) en .env");
+}
+
 
 
 const {
@@ -295,6 +301,95 @@ app.post("/horario", async (req, res) => {
     }
 });
 
+// Genera bloques individuales de 30 minutos dentro de una jornada.
+// No borra horarios anteriores ni turnos reservados.
+app.post("/horarios/generar", async (req, res) => {
+    const idProfesional = Number(req.body.id_profesional);
+    const { dia, hora_inicio, hora_fin } = req.body;
+    const cantidad = Number(req.body.cantidad_turnos);
+    const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    const formatoHora = /^(?:[01]\d|2[0-3]):(?:00|30)$/;
+    const aMinutos = (hora) => {
+        const [horas, minutos] = hora.split(":").map(Number);
+        return horas * 60 + minutos;
+    };
+    const aHora = (minutos) =>
+        `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
+
+    if (
+        !Number.isInteger(idProfesional) || idProfesional <= 0 ||
+        !dias.includes(dia) ||
+        typeof hora_inicio !== "string" || !formatoHora.test(hora_inicio) ||
+        typeof hora_fin !== "string" || !formatoHora.test(hora_fin) ||
+        !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 30
+    ) {
+        return res.status(400).json({
+            mensaje: "Completá profesional, día, horas en punto o media hora y cantidad de turnos (1 a 30)."
+        });
+    }
+
+    const inicio = aMinutos(hora_inicio);
+    const fin = aMinutos(hora_fin);
+    const bloques = (fin - inicio) / DURACION_TURNO_MINUTOS;
+    if (inicio >= fin || !Number.isInteger(bloques) || cantidad > bloques) {
+        return res.status(400).json({
+            mensaje: "La cantidad de consultas de 30 minutos no entra en el rango indicado."
+        });
+    }
+
+    // Reparte los turnos por toda la jornada; los bloques sobrantes quedan como pausas.
+    const posiciones = Array.from({ length: cantidad }, (_, i) =>
+        cantidad === 1 ? 0 : Math.round(i * (bloques - 1) / (cantidad - 1))
+    );
+    const nuevos = posiciones.map((posicion) => ({
+        id_profesional: idProfesional,
+        dia,
+        hora_inicio: aHora(inicio + posicion * DURACION_TURNO_MINUTOS),
+        hora_fin: aHora(inicio + (posicion + 1) * DURACION_TURNO_MINUTOS),
+        disponible: true
+    }));
+
+    try {
+        const creados = await sequelize.transaction(async (transaction) => {
+            // Evita que dos solicitudes simultáneas creen los mismos horarios.
+            await sequelize.query(
+                "SELECT pg_advisory_xact_lock(CAST(:idProfesional AS BIGINT))",
+                { replacements: { idProfesional }, transaction }
+            );
+            const profesional = await Profesional.findByPk(idProfesional, { transaction });
+            if (!profesional) {
+                const error = new Error("El profesional no existe.");
+                error.status = 404;
+                throw error;
+            }
+            const existentes = await Horario.findAll({
+                where: { id_profesional: idProfesional, dia, disponible: true },
+                transaction
+            });
+            const hayCruce = nuevos.some((nuevo) =>
+                existentes.some((existente) =>
+                    aMinutos(nuevo.hora_inicio) < aMinutos(existente.hora_fin) &&
+                    aMinutos(nuevo.hora_fin) > aMinutos(existente.hora_inicio)
+                )
+            );
+            if (hayCruce) {
+                const error = new Error(
+                    "Ya hay horarios cargados que se superponen ese día. No se modificó ninguno."
+                );
+                error.status = 409;
+                throw error;
+            }
+            return Horario.bulkCreate(nuevos, { transaction });
+        });
+        res.status(201).json({ mensaje: `${creados.length} turnos generados.`, horarios: creados });
+    } catch (error) {
+        console.error("Error al generar horarios:", error);
+        res.status(error.status || 500).json({
+            mensaje: error.status ? error.message : "No se pudieron generar los horarios."
+        });
+    }
+});
+
 app.get("/horario", async (req, res) => {
     try {
         const horarios = await Horario.findAll({
@@ -322,7 +417,8 @@ app.get("/horario/profesional/:id_profesional", async (req, res) => {
 
         const horarios = await Horario.findAll({
             where: {
-                id_profesional: idProfesional
+                id_profesional: idProfesional,
+                disponible: true
             },
             order: [
                 ["dia", "ASC"],
@@ -336,6 +432,128 @@ app.get("/horario/profesional/:id_profesional", async (req, res) => {
             mensaje: error.message
         });
     }
+});
+
+// Retira un horario de la agenda sin perder el registro histórico.
+// Si ya hay turnos vinculados, se impide retirarlo para no afectar reservas.
+// ==========================================
+// QUITAR HORARIO DEL PROFESIONAL
+// ==========================================
+
+app.delete("/horario/:id", async (req, res) => {
+
+    const idHorario = Number(req.params.id);
+    const idProfesional = Number(req.query.id_profesional);
+
+    if (
+        !Number.isInteger(idHorario) ||
+        idHorario <= 0 ||
+        !Number.isInteger(idProfesional) ||
+        idProfesional <= 0
+    ) {
+        return res.status(400).json({
+            mensaje: "Horario y profesional válidos son obligatorios."
+        });
+    }
+
+    try {
+
+        await sequelize.transaction(async (transaction) => {
+
+            // Bloquear modificaciones simultáneas
+            await sequelize.query(
+                "SELECT pg_advisory_xact_lock(CAST(:idProfesional AS BIGINT))",
+                {
+                    replacements: { idProfesional },
+                    transaction
+                }
+            );
+
+            // Buscar el horario
+            const horario = await Horario.findByPk(idHorario, {
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            if (
+                !horario ||
+                Number(horario.id_profesional) !== idProfesional ||
+                !horario.disponible
+            ) {
+                const error = new Error(
+                    "No se encontró ese horario activo."
+                );
+
+                error.status = 404;
+                throw error;
+            }
+
+            // Buscar reservas que todavía NO están finalizadas
+            const reservasPendientes = await Turno.count({
+
+                where: {
+
+                    id_horario: idHorario,
+
+                    estado: {
+                        [Op.notIn]: [
+                            "atendido",
+                            "no_asistio"
+                        ]
+                    }
+
+                },
+
+                transaction
+
+            });
+
+            // Si existen reservas pendientes, no permitir quitarlo
+            if (reservasPendientes > 0) {
+
+                const error = new Error(
+                    `Este horario tiene ${reservasPendientes} ` +
+                    `turno(s) pendiente(s). ` +
+                    "Primero debés resolver esas reservas."
+                );
+
+                error.status = 409;
+                throw error;
+            }
+
+            // Desactivar el horario
+            // Sin borrar el historial médico
+            await horario.update(
+                {
+                    disponible: false
+                },
+                {
+                    transaction
+                }
+            );
+
+        });
+
+        res.json({
+            mensaje:
+                "Horario quitado correctamente. " +
+                "Las atenciones anteriores se conservaron."
+        });
+
+    } catch (error) {
+
+        console.error("Error al quitar horario:", error);
+
+        res.status(error.status || 500).json({
+
+            mensaje: error.status
+                ? error.message
+                : "No se pudo quitar el horario."
+
+        });
+
+    }
+
 });
 
 app.get("/horario/:id", async (req, res) => {
@@ -451,18 +669,199 @@ app.get("/pacientes/:id_persona", async (req, res) => {
 
 });
 
-app.post("/atenciones", async (req, res) => {
-    try {
-        const atencion = await Atencion.create(req.body);
+// ==========================================
+// REGISTRAR ATENCIÓN MÉDICA
+// ==========================================
 
-        res.status(201).json(atencion);
+app.post("/atenciones", async (req, res) => {
+
+    try {
+
+        const {
+            id_turno,
+            motivo_consulta,
+            diagnostico,
+            observacion,
+            indicaciones
+        } = req.body;
+
+        const idTurno = Number(id_turno);
+
+        // Validar identificador
+        if (!Number.isInteger(idTurno) || idTurno <= 0) {
+
+            return res.status(400).json({
+                mensaje: "El turno no es válido"
+            });
+
+        }
+
+        // Buscar turno con su horario
+        const turno = await Turno.findByPk(idTurno, {
+            include: [Horario]
+        });
+
+        if (!turno || !turno.Horario) {
+
+            return res.status(404).json({
+                mensaje: "Turno no encontrado"
+            });
+
+        }
+
+        // Solo registrar consultas iniciadas o finalizadas
+        if (
+            turno.estado !== "en_consulta" &&
+            turno.estado !== "atendido"
+        ) {
+
+            return res.status(400).json({
+                mensaje: "Primero debe iniciarse la consulta"
+            });
+
+        }
+
+        // Evitar atenciones duplicadas
+        const existente = await Atencion.findOne({
+            where: {
+                id_turno: idTurno
+            }
+        });
+
+        if (existente) {
+
+            return res.status(409).json({
+                mensaje: "Este turno ya tiene una atención registrada"
+            });
+
+        }
+
+        // Validar campos obligatorios
+        if (
+            typeof motivo_consulta !== "string" ||
+            !motivo_consulta.trim() ||
+            typeof diagnostico !== "string" ||
+            !diagnostico.trim()
+        ) {
+
+            return res.status(400).json({
+                mensaje: "Completá el motivo de consulta y el diagnóstico"
+            });
+
+        }
+
+        // Crear atención médica
+        const atencion = await Atencion.create({
+
+            id_turno: idTurno,
+
+            id_paciente: turno.id_paciente,
+
+            id_profesional: turno.Horario.id_profesional,
+
+            motivo_consulta: motivo_consulta.trim(),
+
+            diagnostico: diagnostico.trim(),
+
+            observacion:
+                typeof observacion === "string"
+                    ? observacion.trim()
+                    : "",
+
+            indicaciones:
+                typeof indicaciones === "string"
+                    ? indicaciones.trim()
+                    : "",
+
+            fecha_atencion: new Date()
+
+        });
+
+        res.status(201).json({
+
+            mensaje: "Atención médica registrada correctamente",
+
+            atencion: atencion
+
+        });
 
     } catch (error) {
+
+        console.error("Error al registrar atención:", error);
+
+        if (
+            error.name === "SequelizeUniqueConstraintError"
+        ) {
+
+            return res.status(409).json({
+                mensaje: "Este turno ya tiene una atención registrada"
+            });
+
+        }
+
         res.status(500).json({
-            mensaje: error.message
+            mensaje: "No se pudo registrar la atención médica"
         });
+
     }
+
 });
+
+// ==========================================
+// HISTORIAL DE ATENCIONES DE UN PACIENTE
+// ==========================================
+
+app.get("/atenciones/paciente/:id_paciente", async (req, res) => {
+
+    try {
+
+        const idPaciente = Number(req.params.id_paciente);
+        const idProfesional = Number(req.query.id_profesional);
+
+        // Validar identificadores
+        if (
+            !Number.isInteger(idPaciente) ||
+            idPaciente <= 0 ||
+            !Number.isInteger(idProfesional) ||
+            idProfesional <= 0
+        ) {
+
+            return res.status(400).json({
+                mensaje: "Identificadores no válidos"
+            });
+
+        }
+
+        // Buscar atenciones del paciente con este profesional
+        const atenciones = await Atencion.findAll({
+
+            where: {
+                id_paciente: idPaciente,
+                id_profesional: idProfesional
+            },
+
+            order: [
+                ["fecha_atencion", "DESC"]
+            ]
+
+        });
+
+        res.json(atenciones);
+
+    } catch (error) {
+
+        console.error("Error al consultar historial:", error);
+
+        res.status(500).json({
+            mensaje: "No se pudo consultar el historial médico"
+        });
+
+    }
+
+});
+
+
+
 
 app.get("/atenciones", async (req, res) => {
     try {
@@ -712,6 +1111,111 @@ app.get("/turnos/profesional/:id_profesional", async (req, res) => {
     }
 });
 
+// ==================== CONTROL DE ASISTENCIA ====================
+
+app.patch("/turnos/:id/estado", async (req, res) => {
+
+    try {
+
+        const idTurno = Number(req.params.id);
+        const idProfesional = Number(req.body.id_profesional);
+        const nuevoEstado = req.body.estado;
+
+        // Verificar identificadores
+        if (
+            !Number.isInteger(idTurno) ||
+            idTurno <= 0 ||
+            !Number.isInteger(idProfesional) ||
+            idProfesional <= 0
+        ) {
+            return res.status(400).json({
+                mensaje: "Identificadores no válidos"
+            });
+        }
+
+        // Estados permitidos
+        const estadosPermitidos = [
+            "reservado",
+            "en_espera",
+            "en_consulta",
+            "atendido",
+            "no_asistio"
+        ];
+
+        if (!estadosPermitidos.includes(nuevoEstado)) {
+            return res.status(400).json({
+                mensaje: "Estado no válido"
+            });
+        }
+
+        // Buscar el turno con su horario
+        const turno = await Turno.findByPk(idTurno, {
+            include: [Horario]
+        });
+
+        if (!turno) {
+            return res.status(404).json({
+                mensaje: "Turno no encontrado"
+            });
+        }
+
+        // Comprobar que el horario corresponde al profesional
+        if (
+            !turno.Horario ||
+            Number(turno.Horario.id_profesional) !== idProfesional
+        ) {
+            return res.status(403).json({
+                mensaje: "El turno no pertenece a ese profesional"
+            });
+        }
+
+        // Validar los cambios de estado
+        const transiciones = {
+            reservado: ["en_espera", "no_asistio"],
+            en_espera: ["en_consulta", "no_asistio"],
+            en_consulta: ["atendido"],
+            atendido: [],
+            no_asistio: []
+        };
+
+        if (!transiciones[turno.estado].includes(nuevoEstado)) {
+            return res.status(400).json({
+                mensaje: "No se puede realizar ese cambio de estado"
+            });
+        }
+
+        // Guardar hora real de inicio
+        if (nuevoEstado === "en_consulta") {
+            turno.inicio_atencion = new Date();
+        }
+
+        // Guardar hora real de finalización
+        if (nuevoEstado === "atendido") {
+            turno.fin_atencion = new Date();
+        }
+
+        // Actualizar estado
+        turno.estado = nuevoEstado;
+
+        await turno.save();
+
+        res.json({
+            mensaje: "Estado actualizado correctamente",
+            turno: turno
+        });
+
+    } catch (error) {
+
+        console.error("Error al actualizar estado:", error);
+
+        res.status(500).json({
+            mensaje: "No se pudo actualizar el estado"
+        });
+
+    }
+
+});
+
 
 app.get("/turnos", async (req, res) => {
     try {
@@ -773,11 +1277,14 @@ app.delete("/turnos/:id", async (req, res) => {
 
 });
 
+// ==================== LOGIN CON JWT ====================
+
 app.post("/login", async (req, res) => {
     try {
 
         const { nombre, contraseña } = req.body;
 
+        // Buscar usuario en PostgreSQL
         const usuario = await Usuario.findOne({
             where: {
                 nombre: nombre,
@@ -792,30 +1299,253 @@ app.post("/login", async (req, res) => {
             });
         }
 
+        // Buscar si el usuario es paciente
         const paciente = await Paciente.findOne({
             where: {
                 id_persona: usuario.id_persona
             }
         });
 
+        // Generar token de autenticación
+        const token = jwt.sign(
+            {
+                id_usuario: usuario.id_usuario,
+                id_persona: usuario.id_persona
+            },
+            process.env.JWT_SECRET,
+            {
+                algorithm: "HS256",
+                expiresIn: "2h"
+            }
+        );
+
+        // Enviar respuesta al frontend
         res.json({
             mensaje: "Login correcto",
+
             usuario: usuario.nombre,
+
             rol: usuario.Rol.tipo_rol,
+
             persona: usuario.Persona,
-            id_paciente: paciente ? paciente.id_paciente : null
+
+            id_paciente: paciente
+                ? paciente.id_paciente
+                : null,
+
+            token: token
         });
 
     } catch (error) {
 
+        console.error("Error al iniciar sesión:", error);
+
         res.status(500).json({
-            mensaje: error.message
+            mensaje: "Error al iniciar sesión"
         });
 
     }
 });
 
 // | INICIAR SERVIDOR ====================
+
+// ==========================================
+// VERIFICAR AUTENTICACIÓN DEL PACIENTE
+// ==========================================
+
+async function verificarPaciente(req, res, next) {
+
+    try {
+
+        // Obtener token enviado desde el frontend
+        const autorizacion = req.headers.authorization || "";
+
+        const [tipo, token] = autorizacion.split(" ");
+
+        if (tipo !== "Bearer" || !token) {
+
+            return res.status(401).json({
+                mensaje: "Debés iniciar sesión para consultar tus atenciones."
+            });
+
+        }
+
+        // Comprobar que el token sea válido
+        let datosToken;
+
+        try {
+
+            datosToken = jwt.verify(
+                token,
+                process.env.JWT_SECRET,
+                {
+                    algorithms: ["HS256"]
+                }
+            );
+
+        } catch (error) {
+
+            return res.status(401).json({
+                mensaje: "Tu sesión venció o no es válida. Iniciá sesión nuevamente."
+            });
+
+        }
+
+        // Buscar el usuario en PostgreSQL
+        const usuario = await Usuario.findByPk(
+            datosToken.id_usuario,
+            {
+                include: [Rol]
+            }
+        );
+
+        if (!usuario) {
+
+            return res.status(404).json({
+                mensaje: "Usuario no encontrado."
+            });
+
+        }
+
+        // Verificar que el token corresponda a ese usuario
+        if (
+            Number(usuario.id_persona) !==
+            Number(datosToken.id_persona)
+        ) {
+
+            return res.status(403).json({
+                mensaje: "No tenés autorización para acceder."
+            });
+
+        }
+
+        // Comprobar el rol
+        const nombreRol = String(
+            usuario.Rol?.tipo_rol || ""
+        ).trim().toLowerCase();
+
+        if (
+            nombreRol !== "paciente" &&
+            nombreRol !== "alumno"
+        ) {
+
+            return res.status(403).json({
+                mensaje: "Esta sección es exclusiva para pacientes."
+            });
+
+        }
+
+        // Buscar al paciente vinculado con el usuario
+        const paciente = await Paciente.findOne({
+            where: {
+                id_persona: usuario.id_persona
+            }
+        });
+
+        if (!paciente) {
+
+            return res.status(404).json({
+                mensaje: "No se encontró el paciente asociado a esta cuenta."
+            });
+
+        }
+
+        // Guardar paciente autenticado en la petición
+        req.pacienteAutenticado = paciente;
+
+        next();
+
+    } catch (error) {
+
+        console.error("Error de autenticación:", error);
+
+        res.status(500).json({
+            mensaje: "No se pudo comprobar la autenticación."
+        });
+
+    }
+
+}
+
+
+// ==========================================
+// MIS ATENCIONES DEL PACIENTE
+// ==========================================
+
+app.get("/mis-atenciones", verificarPaciente, async (req, res) => {
+
+    try {
+
+        // Obtenemos el ID desde la autenticación,
+        // NO desde localStorage ni de la URL.
+
+        const idPaciente = req.pacienteAutenticado.id_paciente;
+
+        // Buscar todas las atenciones del paciente
+        const atenciones = await Atencion.findAll({
+
+            where: {
+                id_paciente: idPaciente
+            },
+
+            attributes: [
+                "id_atencion",
+                "fecha_atencion",
+                "motivo_consulta",
+                "diagnostico",
+                "observacion",
+                "indicaciones"
+            ],
+
+            include: [
+                {
+                    model: Profesional,
+
+                    attributes: [
+                        "id_profesional"
+                    ],
+
+                    include: [
+                        {
+                            model: Persona,
+
+                            attributes: [
+                                "nombre",
+                                "apellido"
+                            ]
+                        },
+
+                        {
+                            model: Especialidad,
+
+                            attributes: [
+                                "nombre"
+                            ]
+                        }
+                    ]
+                }
+            ],
+
+            order: [
+                ["fecha_atencion", "DESC"]
+            ]
+
+        });
+
+        // Enviar historial al paciente
+        res.json(atenciones);
+
+    } catch (error) {
+
+        console.error("Error al consultar mis atenciones:", error);
+
+        res.status(500).json({
+            mensaje: "No se pudieron consultar las atenciones médicas."
+        });
+
+    }
+
+});
 
 sequelize.sync({ alter: true })
     .then(() => {

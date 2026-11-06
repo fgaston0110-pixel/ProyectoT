@@ -1,126 +1,31 @@
-<!DOCTYPE html>
-<html lang="es">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro</title>
-    <link rel="stylesheet" href="../css/registo.css">
-</head>
-
-<body>
-
-    <div class="login-container">
-
-        <form>
-
-            <h2>Registrarse</h2>
-
-            <label for="dni">Ingrese su DNI:</label>
-            <input type="text" id="dni">
-
-            <label for="apellido">Ingrese su apellido:</label>
-            <input type="text" id="apellido">
-
-            <label for="nombre">Ingrese su nombre:</label>
-            <input type="text" id="nombre">
-
-            <label for="telefono">Ingrese su teléfono:</label>
-            <input type="text" id="telefono">
-
-            <label for="edad">Ingrese su edad:</label>
-            <input type="number" id="edad">
-
-            <label for="email">Ingrese su email:</label>
-            <input type="email" id="email">
-
-            <label for="sexo">Ingrese su sexo:</label>
-            <input type="text" id="sexo">
-
-            <label for="direccion">Ingrese su dirección:</label>
-            <input type="text" id="direccion">
-
-            <label for="nacionalidad">Ingrese su nacionalidad:</label>
-            <input type="text" id="nacionalidad">
-
-            <button type="button" onclick="Poner()">
-                <strong>Continuar</strong>
-            </button>
-
-        </form>
-
-    </div>
-
-
-    <script>
-
-        async function Poner() {
-
-            const datos = {
-
-                dni: document.getElementById("dni").value,
-                apellido: document.getElementById("apellido").value,
-                nombre: document.getElementById("nombre").value,
-                telefono: document.getElementById("telefono").value,
-                edad: document.getElementById("edad").value,
-                email: document.getElementById("email").value,
-                sexo: document.getElementById("sexo").value,
-                direccion: document.getElementById("direccion").value,
-                nacionalidad: document.getElementById("nacionalidad").value
-
-            };
-
-
-            try {
-
-                const respuesta = await fetch("http://localhost:3001/personas", {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify(datos)
-
-                });
-
-
-                const resultado = await respuesta.json();
-
-                console.log(resultado);
-
-
-                if (respuesta.ok) {
-
-                    // Guardamos temporalmente el ID de la persona
-                    localStorage.setItem(
-                        "id_persona",
-                        resultado.id_persona
-                    );
-
-                    // Pasamos a la página para crear usuario
-                    window.location.href = "cuenta.html";
-
-                } else {
-
-                    alert(resultado.mensaje);
-
-                }
-
-
-            } catch (error) {
-
-                console.log(error);
-
-                alert("Error al conectar con el servidor");
-
-            }
-
-        }
-
-    </script>
-
-</body>
-
-</html>
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Registro de persona</title><link rel="stylesheet" href="../css/registo.css"><style>
+/* Se conserva el tamaño y distribución original de principal.css / registo.css. */
+.login-container { max-width: calc(100vw - 28px); }
+.login-container input, .login-container select { max-width: 100%; }
+.login-container button:disabled { opacity: .55; cursor: wait; transform: none; }
+.mensaje-app { padding: 12px 14px; border-radius: 10px; margin: 12px 0; font-weight: 600; line-height: 1.45; background: #15233b; color: #e2e8f0; border: 1px solid #64748b; overflow-wrap: anywhere; }
+.mensaje-app[hidden] { display: none; }
+.mensaje-app.error { background: #4c1d24; color: #fecaca; border-color: #ef4444; }
+.mensaje-app.ok { background: #12382b; color: #bbf7d0; border-color: #22c55e; }
+.mensaje-app.info { background: #172d52; color: #bfdbfe; border-color: #60a5fa; }
+.enlace-form { text-align: center; display: block; color: #dbeafe; margin-top: 12px; }
+/* El bloque de profesional sigue oculto hasta que se selecciona su rol. */
+#datos-profesional[hidden] { display:none; }
+#datos-profesional label { color: white; }
+#datos-profesional select { padding: 9px; border-radius: 8px; }
+</style></head><body><div class="login-container"><form id="form-persona"><h2>Registrarse</h2>
+<label for="dni">DNI</label><input id="dni" required maxlength="20" inputmode="numeric">
+<label for="apellido">Apellido</label><input id="apellido" required>
+<label for="nombre">Nombre</label><input id="nombre" required>
+<label for="telefono">Teléfono</label><input id="telefono" required>
+<label for="edad">Edad</label><input id="edad" type="number" min="0" max="120" required>
+<label for="email">Email</label><input id="email" type="email" required>
+<label for="sexo">Sexo</label><input id="sexo" required>
+<label for="direccion">Dirección</label><input id="direccion" required>
+<label for="nacionalidad">Nacionalidad</label><input id="nacionalidad" required>
+<button type="submit" id="boton-continuar">Continuar</button><div id="mensaje-app" class="mensaje-app" role="status" aria-live="polite" hidden></div><a class="enlace-form" href="usulol.html">Volver al inicio de sesión</a></form></div><script>
+const API='http://localhost:3001';
+function mensaje(texto, tipo='info') {const el=document.getElementById('mensaje-app');el.textContent=texto;el.className='mensaje-app '+tipo;el.hidden=false;}
+async function leerJSON(respuesta) {const texto=await respuesta.text();try{return texto?JSON.parse(texto):{};}catch{throw new Error('El servidor no devolvió JSON. Revisá que el backend esté activo y la ruta exista.');}}
+document.getElementById('form-persona').addEventListener('submit',async e=>{e.preventDefault();const boton=document.getElementById('boton-continuar');const campos=['dni','apellido','nombre','telefono','edad','email','sexo','direccion','nacionalidad'];const datos=Object.fromEntries(campos.map(c=>[c,document.getElementById(c).value.trim()]));boton.disabled=true;mensaje('Guardando datos personales...');try{const respuesta=await fetch(API+'/personas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(datos)});const resultado=await leerJSON(respuesta);if(!respuesta.ok)throw new Error(resultado.mensaje||'No se pudo registrar la persona.');if(!resultado.id_persona)throw new Error('El servidor no devolvió el identificador de la persona.');localStorage.setItem('id_persona',String(resultado.id_persona));mensaje('✅ Datos guardados. Continuando a la creación de cuenta...','ok');window.location.href='cuenta.html';}catch(err){console.error(err);mensaje(err.message||'Error al registrar la persona.','error');}finally{boton.disabled=false;}});
+</script></body></html>

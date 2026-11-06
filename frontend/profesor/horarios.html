@@ -91,15 +91,55 @@
         .horario p {
             color: #cbd5e1;
         }
+
+        .boton-quitar {
+            margin-top: 14px;
+            padding: 10px 14px;
+            border: 1px solid #f87171;
+            border-radius: 8px;
+            color: #ffffff;
+            background: #991b1b;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .boton-quitar:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .acciones-horario { display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
+        .acciones-horario button { min-height:43px; padding:11px 16px; border:0; border-radius:8px; color:white; background:#2563eb; font-weight:bold; cursor:pointer; }
+        .acciones-horario button:disabled { opacity:.6; cursor:not-allowed; }
+        .acciones-horario button.secundario { background:#475569; }
+        #vista-previa { margin-top:16px; color:#e2e8f0; }
+        #vista-previa ul { display:flex; flex-wrap:wrap; gap:8px; padding:0; list-style:none; }
+        #vista-previa li { padding:8px 12px; border:1px solid #64748b; border-radius:8px; background:#1e293b; }
+        /* Mensajes y cuadro de confirmación integrados a la página */
+        #mensaje.aviso { padding: 13px 16px; border: 1px solid #64748b; border-radius: 10px; background: #1e293b; }
+        #mensaje.aviso.exito { border-color: #16a34a; color: #bbf7d0; }
+        #mensaje.aviso.error { border-color: #dc2626; color: #fecaca; }
+        #mensaje.aviso.info { border-color: #3b82f6; color: #bfdbfe; }
+        #mensaje:empty { display: none; }
+        .modal-fondo[hidden] { display: none; }
+        .modal-fondo { position: fixed; inset: 0; z-index: 1000; background: rgba(2, 6, 23, .78); display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .modal-caja { width: min(100%, 460px); background: #172238; border: 1px solid #64748b; border-radius: 16px; padding: 26px; color: #e2e8f0; box-shadow: 0 16px 45px rgba(0, 0, 0, .5); }
+        .modal-caja h2 { color: #93c5fd; margin: 0 0 16px; }
+        .modal-caja p { line-height: 1.5; margin: 0 0 12px; }
+        .modal-acciones { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+        .modal-acciones button { border: 0; border-radius: 9px; padding: 12px 18px; cursor: pointer; color: white; font-weight: bold; }
+        #cancelar-quitar { background: #475569; }
+        #confirmar-quitar { background: #b91c1c; }
+        .modal-acciones button:disabled { opacity: .6; cursor: not-allowed; }
     </style>
 </head>
 <body>
     <main class="principal">
         <h1>Mis horarios</h1>
-        <p>Agregá los días y rangos horarios en los que atendés.</p>
+        <p>Definí tu jornada y cuántos pacientes vas a atender. Los turnos duran 30 minutos y se distribuyen automáticamente con pausas si hay tiempo libre.</p>
 
         <section class="seccion-horarios">
-            <h2>Cargar un horario</h2>
+            <h2>Generar horarios de atención</h2>
             <form id="formulario-horario" class="formulario-horario">
                 <label class="campo-horario" for="dia">
                     Día
@@ -125,8 +165,16 @@
                     <input id="hora-fin" name="hora_fin" type="time" required>
                 </label>
 
-                <button id="guardar-horario" type="submit">Guardar horario</button>
+                <label class="campo-horario" for="cantidad-turnos">
+                    Cantidad de turnos (30 minutos cada uno)
+                    <input id="cantidad-turnos" name="cantidad_turnos" type="number" min="1" max="30" value="8" required>
+                </label>
+                <div class="acciones-horario">
+                    <button id="vista-previa-boton" type="button" class="secundario">Ver horarios generados</button>
+                    <button id="guardar-horario" type="submit">Guardar todos los turnos</button>
+                </div>
             </form>
+            <div id="vista-previa" aria-live="polite"></div>
             <p id="mensaje" role="status"></p>
         </section>
 
@@ -137,6 +185,18 @@
             </div>
         </section>
     </main>
+    <!-- Confirmación propia: no usa la ventana confirm() del navegador -->
+    <div id="modal-quitar" class="modal-fondo" hidden>
+        <section class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="titulo-quitar" aria-describedby="detalle-quitar">
+            <h2 id="titulo-quitar">¿Quitar horario?</h2>
+            <p id="detalle-quitar"></p>
+            <p>Si hay pacientes con turnos reservados, el sistema no permitirá quitarlo.</p>
+            <div class="modal-acciones">
+                <button type="button" id="cancelar-quitar">Cancelar</button>
+                <button type="button" id="confirmar-quitar">Sí, quitar horario</button>
+            </div>
+        </section>
+    </div>
 
     <script>
         const API = "http://localhost:3001";
@@ -145,6 +205,29 @@
         const mensaje = document.getElementById("mensaje");
         const listaHorarios = document.getElementById("lista-horarios");
         const botonGuardar = document.getElementById("guardar-horario");
+        const modalQuitar = document.getElementById("modal-quitar");
+        const botonConfirmarQuitar = document.getElementById("confirmar-quitar");
+        const botonCancelarQuitar = document.getElementById("cancelar-quitar");
+        let horarioPendiente = null;
+        let botonPendiente = null;
+        let quitando = false;
+        function mostrarMensaje(texto, tipo = "info") {
+            mensaje.textContent = texto;
+            mensaje.className = texto ? `aviso ${tipo}` : "";
+        }
+        function cerrarModalQuitar() {
+            if (quitando) return;
+            modalQuitar.hidden = true;
+            horarioPendiente = null;
+            botonPendiente = null;
+        }
+        botonCancelarQuitar.addEventListener("click", cerrarModalQuitar);
+        modalQuitar.addEventListener("click", (evento) => {
+            if (evento.target === modalQuitar) cerrarModalQuitar();
+        });
+        document.addEventListener("keydown", (evento) => {
+            if (evento.key === "Escape" && !modalQuitar.hidden) cerrarModalQuitar();
+        });
 
         function mostrarHorarios(horarios) {
             listaHorarios.replaceChildren();
@@ -167,14 +250,61 @@
                 rango.textContent =
                     `${horario.hora_inicio.slice(0, 5)} a ${horario.hora_fin.slice(0, 5)}`;
 
-                tarjeta.append(dia, rango);
+                const botonQuitar = document.createElement("button");
+                botonQuitar.type = "button";
+                botonQuitar.className = "boton-quitar";
+                botonQuitar.textContent = "Quitar horario";
+                botonQuitar.addEventListener("click", () => quitarHorario(horario, botonQuitar));
+
+                tarjeta.append(dia, rango, botonQuitar);
                 listaHorarios.appendChild(tarjeta);
             });
         }
 
+        function quitarHorario(horario, boton) {
+            horarioPendiente = horario;
+            botonPendiente = boton;
+            document.getElementById("detalle-quitar").textContent =
+                `${horario.dia}, de ${horario.hora_inicio.slice(0, 5)} a ${horario.hora_fin.slice(0, 5)}.`;
+            modalQuitar.hidden = false;
+            botonCancelarQuitar.focus();
+        }
+
+        botonConfirmarQuitar.addEventListener("click", async () => {
+            if (!horarioPendiente || quitando) return;
+            quitando = true;
+            const horario = horarioPendiente;
+            const boton = botonPendiente;
+            boton.disabled = true;
+            botonConfirmarQuitar.disabled = true;
+            botonCancelarQuitar.disabled = true;
+            mostrarMensaje("Quitando horario...", "info");
+            try {
+                const respuesta = await fetch(
+                    `${API}/horario/${encodeURIComponent(horario.id_horario)}?id_profesional=${encodeURIComponent(idProfesional)}`,
+                    { method: "DELETE" }
+                );
+                const resultado = await respuesta.json();
+                if (!respuesta.ok) throw new Error(resultado.mensaje || "No se pudo quitar el horario.");
+                await cargarHorarios();
+                mostrarMensaje(resultado.mensaje || "Horario quitado correctamente.", "exito");
+            } catch (error) {
+                console.error("Error al quitar horario:", error);
+                mostrarMensaje(error.message || "No se pudo conectar con el servidor.", "error");
+                boton.disabled = false;
+            } finally {
+                quitando = false;
+                modalQuitar.hidden = true;
+                horarioPendiente = null;
+                botonPendiente = null;
+                botonConfirmarQuitar.disabled = false;
+                botonCancelarQuitar.disabled = false;
+            }
+        });
+
         async function cargarHorarios() {
             if (!idProfesional) {
-                mensaje.textContent = "No se encontró el profesional. Inicia sesión nuevamente.";
+                mostrarMensaje("No se encontró el profesional. Iniciá sesión nuevamente.", "error");
                 listaHorarios.replaceChildren();
                 return;
             }
@@ -193,59 +323,106 @@
             } catch (error) {
                 console.error("Error al cargar los horarios:", error);
                 listaHorarios.replaceChildren();
-                mensaje.textContent =
-                    error.message || "No se pudieron cargar los horarios.";
+                mostrarMensaje(error.message || "No se pudieron cargar los horarios.", "error");
             }
         }
 
+        const botonPrevia = document.getElementById("vista-previa-boton");
+        const vistaPrevia = document.getElementById("vista-previa");
+        const DURACION = 30;
+
+        function calcularTurnos() {
+            const dia = document.getElementById("dia").value;
+            const inicioTexto = document.getElementById("hora-inicio").value;
+            const finTexto = document.getElementById("hora-fin").value;
+            const cantidad = Number(document.getElementById("cantidad-turnos").value);
+            if (!dia || !inicioTexto || !finTexto || !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 30) {
+                throw new Error("Completá el día, el rango y una cantidad de 1 a 30 turnos.");
+            }
+            if (!/^(?:[01]\d|2[0-3]):(?:00|30)$/.test(inicioTexto) ||
+                !/^(?:[01]\d|2[0-3]):(?:00|30)$/.test(finTexto)) {
+                throw new Error("Usá horas en punto o y media (08:00, 08:30...).");
+            }
+            const aMinutos = (texto) => {
+                const [horas, minutos] = texto.split(":").map(Number);
+                return horas * 60 + minutos;
+            };
+            const aHora = (minutos) =>
+                `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
+            const inicio = aMinutos(inicioTexto);
+            const fin = aMinutos(finTexto);
+            const bloques = (fin - inicio) / DURACION;
+            if (inicio >= fin || !Number.isInteger(bloques) || cantidad > bloques) {
+                throw new Error("Los turnos no entran en la jornada indicada.");
+            }
+            const posiciones = Array.from({ length: cantidad }, (_, i) =>
+                cantidad === 1 ? 0 : Math.round(i * (bloques - 1) / (cantidad - 1))
+            );
+            return posiciones.map((posicion) => ({
+                inicio: aHora(inicio + posicion * DURACION),
+                fin: aHora(inicio + (posicion + 1) * DURACION)
+            }));
+        }
+
+        function mostrarVistaPrevia() {
+            mostrarMensaje("");
+            vistaPrevia.replaceChildren();
+            try {
+                const turnos = calcularTurnos();
+                const titulo = document.createElement("p");
+                titulo.textContent = `${turnos.length} horarios propuestos (todavía no se guardaron):`;
+                const lista = document.createElement("ul");
+                turnos.forEach((turno) => {
+                    const item = document.createElement("li");
+                    item.textContent = `${turno.inicio} a ${turno.fin}`;
+                    lista.appendChild(item);
+                });
+                vistaPrevia.append(titulo, lista);
+            } catch (error) {
+                mostrarMensaje(error.message, "error");
+            }
+        }
+
+        botonPrevia.addEventListener("click", mostrarVistaPrevia);
         formulario.addEventListener("submit", async (evento) => {
             evento.preventDefault();
-            mensaje.textContent = "";
-
+            mostrarMensaje("");
             if (!idProfesional) {
-                mensaje.textContent = "No se encontró el profesional. Inicia sesión nuevamente.";
+                mostrarMensaje("No se encontró el profesional. Iniciá sesión nuevamente.", "error");
                 return;
             }
-
-            const horaInicio = document.getElementById("hora-inicio").value;
-            const horaFin = document.getElementById("hora-fin").value;
-
-            if (horaInicio >= horaFin) {
-                mensaje.textContent = "La hora de fin debe ser posterior a la de inicio.";
-                return;
-            }
-
-            botonGuardar.disabled = true;
-
             try {
-                const respuesta = await fetch(`${API}/horario`, {
+                calcularTurnos(); // Validación del formulario, antes de guardar.
+            } catch (error) {
+                mostrarMensaje(error.message, "error");
+                return;
+            }
+            botonGuardar.disabled = true;
+            botonPrevia.disabled = true;
+            try {
+                const respuesta = await fetch(`${API}/horarios/generar`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         id_profesional: Number(idProfesional),
                         dia: document.getElementById("dia").value,
-                        hora_inicio: horaInicio,
-                        hora_fin: horaFin
+                        hora_inicio: document.getElementById("hora-inicio").value,
+                        hora_fin: document.getElementById("hora-fin").value,
+                        cantidad_turnos: Number(document.getElementById("cantidad-turnos").value)
                     })
                 });
                 const resultado = await respuesta.json();
-
-                if (!respuesta.ok) {
-                    mensaje.textContent =
-                        resultado.mensaje || "No se pudo guardar el horario.";
-                    return;
-                }
-
+                if (!respuesta.ok) throw new Error(resultado.mensaje || "No se pudieron guardar los horarios.");
                 formulario.reset();
-                mensaje.textContent = "Horario guardado correctamente.";
+                vistaPrevia.replaceChildren();
                 await cargarHorarios();
+                mostrarMensaje(resultado.mensaje || "Horarios guardados correctamente.", "exito");
             } catch (error) {
-                console.error("Error al guardar el horario:", error);
-                mensaje.textContent = "No se pudo conectar con el servidor.";
+                console.error("Error al guardar los turnos:", error);
+                mostrarMensaje(error.message || "No se pudo conectar con el servidor.", "error");
             } finally {
                 botonGuardar.disabled = false;
+                botonPrevia.disabled = false;
             }
         });
 

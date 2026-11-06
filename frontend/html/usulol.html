@@ -1,92 +1,24 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Usuario</title>
-    <link rel="stylesheet" href="../css/principal.css">
-</head>
-<body>
-    <div class="login-container">
-    <form action="">
-        <h2>Iniciar Sesión</h2>
-        <label for="usu">Ingrese su Usuario:</label>
-        <input type="text" name="usu" id="usu">
-        <br><br>
-        <label for="contr">Ingrese su contraseña:</label>
-        <input type="password" name="contr" id="contr">
-        <br><br>
-        <button type="button" onclick="Poner()"><strong>Iniciar Sesion</strong></button>
-        <br><br>
-        <button type="button" onclick="window.location.href='registro.html'"><strong>Registrarse como nuevo usuario</strong></button>
-        </div>
-
-    <script>
-        async function Poner() {
-            const usuario = document.getElementById("usu").value;
-            const contraseña = document.getElementById("contr").value;
-
-            try {
-                const respuesta = await fetch("http://localhost:3001/login", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        nombre: usuario,
-                        contraseña: contraseña
-                    })
-                });
-
-                const resultado = await respuesta.json();
-
-                if (!respuesta.ok) {
-                    alert(resultado.mensaje || "No se pudo iniciar sesión");
-                    return;
-                }
-
-                localStorage.setItem("persona", JSON.stringify(resultado.persona));
-                localStorage.setItem("rol", resultado.rol);
-                localStorage.removeItem("id_paciente");
-                localStorage.removeItem("id_profesional");
-
-                if (resultado.rol === "Administrador") {
-                    window.location.href = "admin.html";
-                } else if (resultado.rol === "Profesional") {
-                    const respuestaProfesional = await fetch(
-                        "http://localhost:3001/profesional/persona/" +
-                        resultado.persona.id_persona
-                    );
-                    const profesional = await respuestaProfesional.json();
-
-                    if (!respuestaProfesional.ok) {
-                        alert(profesional.mensaje || "No se encontró el profesional");
-                        return;
-                    }
-
-                    localStorage.setItem(
-                        "id_profesional",
-                        profesional.id_profesional
-                    );
-                    window.location.href = "profesor.html";
-                } else if (resultado.rol === "Paciente") {
-                    if (!resultado.id_paciente) {
-                        alert("La cuenta no tiene un paciente asociado");
-                        return;
-                    }
-
-                    localStorage.setItem("id_paciente", resultado.id_paciente);
-                    window.location.href = "alumno.html";
-                } else if (resultado.rol === "Supervisor") {
-                    alert("La página de supervisor todavía no está disponible");
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Error al conectar con el servidor");
-            }
-        }
-    </script>
-    </form>
-</body>
-
-</html>
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Iniciar sesión</title><link rel="stylesheet" href="../css/principal.css"><style>
+/* Se conserva el tamaño y distribución original de principal.css / registo.css. */
+.login-container { max-width: calc(100vw - 28px); }
+.login-container input, .login-container select { max-width: 100%; }
+.login-container button:disabled { opacity: .55; cursor: wait; transform: none; }
+.mensaje-app { padding: 12px 14px; border-radius: 10px; margin: 12px 0; font-weight: 600; line-height: 1.45; background: #15233b; color: #e2e8f0; border: 1px solid #64748b; overflow-wrap: anywhere; }
+.mensaje-app[hidden] { display: none; }
+.mensaje-app.error { background: #4c1d24; color: #fecaca; border-color: #ef4444; }
+.mensaje-app.ok { background: #12382b; color: #bbf7d0; border-color: #22c55e; }
+.mensaje-app.info { background: #172d52; color: #bfdbfe; border-color: #60a5fa; }
+.enlace-form { text-align: center; display: block; color: #dbeafe; margin-top: 12px; }
+/* El bloque de profesional sigue oculto hasta que se selecciona su rol. */
+#datos-profesional[hidden] { display:none; }
+#datos-profesional label { color: white; }
+#datos-profesional select { padding: 9px; border-radius: 8px; }
+</style></head><body><div class="login-container"><form id="form-login"><h2>Iniciar sesión</h2><label for="usu">Usuario</label><input id="usu" name="usu" autocomplete="username" required><label for="contr">Contraseña</label><input type="password" id="contr" autocomplete="current-password" required><button id="boton-login" type="submit"><strong>Iniciar sesión</strong></button><div id="mensaje-app" class="mensaje-app" role="status" aria-live="polite" hidden></div><a class="enlace-form" href="registro.html">Registrarse como nuevo usuario</a></form></div><script>
+const API='http://localhost:3001';
+function mensaje(texto, tipo='info') {const el=document.getElementById('mensaje-app');el.textContent=texto;el.className='mensaje-app '+tipo;el.hidden=false;}
+async function leerJSON(respuesta) {const texto=await respuesta.text();try{return texto?JSON.parse(texto):{};}catch{throw new Error('El servidor no devolvió JSON. Revisá que el backend esté activo y la ruta exista.');}}
+document.getElementById('form-login').addEventListener('submit',async e=>{e.preventDefault();const boton=document.getElementById('boton-login');const nombre=document.getElementById('usu').value.trim();const contraseña=document.getElementById('contr').value;if(!nombre||!contraseña){mensaje('Completá usuario y contraseña.','error');return;}boton.disabled=true;mensaje('Verificando tus datos...');try{const respuesta=await fetch(API+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre,contraseña})});const resultado=await leerJSON(respuesta);if(!respuesta.ok)throw new Error(resultado.mensaje||'No se pudo iniciar sesión.');if(!resultado.persona || !resultado.persona.id_persona)throw new Error('La cuenta no tiene datos personales asociados.');let destino=null,idRelacionado=null;
+if(resultado.rol==='Administrador'){destino='admin.html';}else if(resultado.rol==='Profesional'){const rp=await fetch(API+'/profesional/persona/'+encodeURIComponent(resultado.persona.id_persona));const p=await leerJSON(rp);if(!rp.ok||!p.id_profesional)throw new Error(p.mensaje||'No se encontró el profesional.');idRelacionado=['id_profesional',String(p.id_profesional)];destino='profesor.html';}else if(resultado.rol==='Paciente'){if(!resultado.id_paciente)throw new Error('La cuenta no tiene un paciente asociado.');idRelacionado=['id_paciente',String(resultado.id_paciente)];destino='alumno.html';}else{throw new Error('Este tipo de usuario todavía no tiene una página disponible.');}
+if(!resultado.token)throw new Error('El servidor aún no entrega el token de sesión. Revisá app.js.');sessionStorage.setItem('token_turnero',resultado.token);localStorage.setItem('persona',JSON.stringify(resultado.persona));localStorage.setItem('rol',resultado.rol);localStorage.removeItem('id_paciente');localStorage.removeItem('id_profesional');if(idRelacionado)localStorage.setItem(...idRelacionado);mensaje('✅ Inicio de sesión correcto. Ingresando...','ok');window.location.href=destino;
+}catch(err){console.error(err);mensaje(err.message||'No se pudo conectar con el servidor.','error');}finally{boton.disabled=false;}});
+</script></body></html>

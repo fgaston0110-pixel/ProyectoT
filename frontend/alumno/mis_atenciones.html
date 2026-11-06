@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mis atenciones</title>
+<link rel="stylesheet" href="../css/estilo2.css">
+<style>
+.historial-head{display:flex;flex-wrap:wrap;gap:15px;align-items:center;justify-content:space-between}
+.historial-head h1{margin-bottom:0}
+.boton-actualizar,.boton-detalle{background:#2563eb;color:white;border:0;border-radius:9px;padding:12px 17px;font-weight:bold;cursor:pointer}
+.boton-actualizar:disabled{opacity:.65;cursor:wait}
+#estado-pagina{margin:18px 0;color:#cbd5e1;line-height:1.5}
+#estado-pagina.error{padding:13px;border-radius:9px;color:#fecaca;background:#450a0a;border:1px solid #f87171}
+#lista-atenciones{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,265px),1fr));gap:18px;margin-top:22px}
+.tarjeta-atencion{padding:20px;border:1px solid #475569;border-radius:13px;background:#1e293b;color:#e2e8f0;box-shadow:0 4px 12px #0003}
+.tarjeta-atencion h2{color:#93c5fd;font-size:20px;margin:0 0 12px}
+.tarjeta-atencion p{margin:8px 0;overflow-wrap:anywhere}
+.boton-detalle{margin-top:12px}
+#detalle-atencion{padding:23px;background:#1e293b;border:1px solid #60a5fa;border-radius:13px;margin-top:25px;color:#e2e8f0}
+#detalle-atencion[hidden]{display:none}
+#detalle-atencion h2{color:#93c5fd}
+#detalle-atencion p{line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+#cerrar-detalle{background:#475569;color:white;border:0;border-radius:9px;padding:11px 17px;cursor:pointer;font-weight:bold}
+</style>
+</head>
+<body>
+<main>
+<div class="historial-head"><h1>🩺 Mis atenciones</h1><button class="boton-actualizar" id="actualizar" type="button">↻ Actualizar</button></div>
+<p id="estado-pagina" role="status" aria-live="polite">Consultando tus atenciones...</p>
+<section id="lista-atenciones" aria-label="Historial de consultas"></section>
+<section id="detalle-atencion" hidden aria-label="Detalle de la atención">
+<h2>Detalle de la consulta</h2>
+<p><strong>Fecha:</strong> <span id="det-fecha"></span></p>
+<p><strong>Profesional:</strong> <span id="det-medico"></span></p>
+<p><strong>Especialidad:</strong> <span id="det-especialidad"></span></p>
+<p><strong>Motivo:</strong> <span id="det-motivo"></span></p>
+<p><strong>Diagnóstico:</strong> <span id="det-diagnostico"></span></p>
+<p><strong>Observaciones:</strong> <span id="det-observacion"></span></p>
+<p><strong>Indicaciones:</strong> <span id="det-indicaciones"></span></p>
+<button type="button" id="cerrar-detalle">Cerrar detalle</button>
+</section>
+</main>
+<script>
+const API = 'http://localhost:3001';
+const listado = document.getElementById('lista-atenciones');
+const estado = document.getElementById('estado-pagina');
+const detalle = document.getElementById('detalle-atencion');
+const botonActualizar = document.getElementById('actualizar');
+const fechaLegible = valor => {
+  const d = new Date(valor);
+  return Number.isNaN(d.getTime()) ? 'Fecha no disponible' : d.toLocaleDateString('es-AR', {day:'2-digit',month:'long',year:'numeric'});
+};
+const texto = (valor) => (typeof valor === 'string' && valor.trim()) ? valor : 'Sin registrar';
+function profesional(a) {
+  const persona = a.Profesional?.Persona;
+  return persona ? `${persona.nombre || ''} ${persona.apellido || ''}`.trim() || 'No disponible' : 'No disponible';
+}
+function especialidad(a) {return a.Profesional?.Especialidad?.nombre || 'No disponible';}
+function verDetalle(a) {
+  const campos = {
+    'det-fecha': fechaLegible(a.fecha_atencion), 'det-medico': profesional(a),
+    'det-especialidad': especialidad(a), 'det-motivo': texto(a.motivo_consulta),
+    'det-diagnostico': texto(a.diagnostico), 'det-observacion': texto(a.observacion),
+    'det-indicaciones': texto(a.indicaciones)
+  };
+  for (const [id,valor] of Object.entries(campos)) document.getElementById(id).textContent=valor;
+  detalle.hidden=false;
+  detalle.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function mostrarTarjeta(a) {
+  const tarjeta=document.createElement('article');tarjeta.className='tarjeta-atencion';
+  const titulo=document.createElement('h2');titulo.textContent=fechaLegible(a.fecha_atencion);
+  const medico=document.createElement('p');medico.textContent=`Profesional: ${profesional(a)}`;
+  const espec=document.createElement('p');espec.textContent=`Especialidad: ${especialidad(a)}`;
+  const boton=document.createElement('button');boton.className='boton-detalle';boton.type='button';boton.textContent='📄 Ver detalles';
+  boton.addEventListener('click',()=>verDetalle(a));tarjeta.append(titulo,medico,espec,boton);listado.appendChild(tarjeta);
+}
+async function cargarAtenciones(){
+  detalle.hidden=true;listado.replaceChildren();estado.className='';estado.textContent='Consultando tus atenciones...';
+  const token=sessionStorage.getItem('token_turnero');
+  if(!token){estado.className='error';estado.textContent='Tu sesión no está activa. Cerrá sesión e ingresá nuevamente.';return;}
+  botonActualizar.disabled=true;
+  try {
+    const respuesta=await fetch(`${API}/mis-atenciones`,{headers:{Authorization:`Bearer ${token}`}});
+    const tipo=respuesta.headers.get('content-type')||'';
+    if(!tipo.includes('application/json'))throw new Error('El servidor no devolvió JSON. Revisá que agregaste la ruta /mis-atenciones.');
+    const datos=await respuesta.json();
+    if(!respuesta.ok)throw new Error(datos.mensaje || 'No se pudo cargar tu historial.');
+    if(!Array.isArray(datos))throw new Error('El servidor devolvió un formato inesperado.');
+    if(datos.length===0){estado.textContent='Todavía no tenés consultas médicas registradas.';return;}
+    estado.textContent=`Tenés ${datos.length} consulta${datos.length===1?'':'s'} registrada${datos.length===1?'':'s'}.`;
+    datos.forEach(mostrarTarjeta);
+  }catch(error){console.error(error);estado.className='error';estado.textContent=error.message || 'No se pudo consultar el historial.';}
+  finally{botonActualizar.disabled=false;}
+}
+botonActualizar.addEventListener('click',cargarAtenciones);
+document.getElementById('cerrar-detalle').addEventListener('click',()=>{detalle.hidden=true;});
+cargarAtenciones();
+</script>
+</body>
+</html>

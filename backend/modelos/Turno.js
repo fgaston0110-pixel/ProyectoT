@@ -21,10 +21,35 @@ module.exports = (sequelize, DataTypes) => {
         fecha_turno: {
             type: DataTypes.DATE,
             allowNull: false
+        },
+
+        // Estado del turno del paciente
+        estado: {
+            type: DataTypes.ENUM(
+                "reservado",
+                "en_espera",
+                "en_consulta",
+                "atendido",
+                "no_asistio"
+            ),
+            allowNull: false,
+            defaultValue: "reservado"
+        },
+
+        // Hora real en la que comienza la consulta
+        inicio_atencion: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
+
+        // Hora real en la que termina la consulta
+        fin_atencion: {
+            type: DataTypes.DATE,
+            allowNull: true
         }
 
     });
-
+    
     // Relaciones de Turno
     Turno.associate = (models) => {
 

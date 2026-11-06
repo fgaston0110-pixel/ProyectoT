@@ -1,175 +1,197 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis Turnos</title>
-
-    <link rel="stylesheet" href="../css/estilo2.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis turnos</title>
+  <link rel="stylesheet" href="../css/estilo2.css">
+  <style>
+    .encabezado-mis-turnos {display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:20px}
+    .encabezado-mis-turnos h1 {margin:0}
+    .actualizar-turnos {background:#2563eb;color:white;border:0;border-radius:9px;padding:12px 17px;font-weight:700;cursor:pointer}
+    #mensaje-mis-turnos {margin:16px 0;color:#cbd5e1;min-height:22px}
+    .aviso-turnos {padding:14px 18px;border:1px solid #475569;border-radius:11px;background:#1e293b;color:#e2e8f0;margin:16px 0}
+    .aviso-turnos[hidden], .confirmar-cancelacion[hidden] {display:none}
+    .aviso-turnos.exito {border-color:#16a34a;color:#bbf7d0}
+    .aviso-turnos.error {border-color:#dc2626;color:#fecaca}
+    #mis-turnos .turno {text-align:left;display:flex;flex-direction:column;gap:10px;min-width:0}
+    #mis-turnos .turno p {margin:0;color:#cbd5e1}
+    #mis-turnos .turno h2 {margin:0;color:#93c5fd}
+    .estado-reserva {display:inline-block;padding:5px 10px;border:1px solid #475569;border-radius:8px;width:fit-content;color:#e2e8f0}
+    .btn-cancelar-moderno {padding:12px 16px;border:none;border-radius:9px;color:white;background:#dc2626;cursor:pointer;font-size:15px;font-weight:700;margin-top:8px}
+    .btn-cancelar-moderno:disabled {opacity:.6;cursor:not-allowed}
+    .confirmar-cancelacion {background:#1e293b;border:1px solid #60a5fa;padding:22px;border-radius:14px;color:#e2e8f0;margin:22px 0}
+    .confirmar-cancelacion h2 {color:#93c5fd;margin-top:0}
+    .acciones-confirmacion {display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+    .acciones-confirmacion button {padding:12px 18px;border:0;border-radius:9px;cursor:pointer;font-size:15px;font-weight:700;color:white}
+    #aceptar-cancelacion {background:#dc2626}
+    #volver-cancelacion {background:#475569}
+    .acciones-confirmacion button:disabled {opacity:.6;cursor:not-allowed}
+    .seccion-turnos {margin-top:28px}
+    .seccion-turnos h2 {color:#93c5fd;margin:0 0 12px}
+    .nota-turnos {color:#cbd5e1;margin:8px 0 14px}
+  </style>
 </head>
-
 <body>
+  <main>
+    <div class="encabezado-mis-turnos">
+      <h1>Mis turnos</h1>
+      <button type="button" id="actualizar-turnos" class="actualizar-turnos">↻ Actualizar</button>
+    </div>
+    <p id="mensaje-mis-turnos" role="status" aria-live="polite">Cargando tus turnos...</p>
+    <div id="aviso-turnos" class="aviso-turnos" role="status" aria-live="polite" hidden></div>
+    <section id="confirmar-cancelacion" class="confirmar-cancelacion" hidden aria-label="Confirmar cancelación">
+      <h2>¿Cancelar este turno?</h2>
+      <p id="resumen-cancelacion"></p>
+      <p>Si confirmás, tu reserva se cancelará y el horario podrá quedar disponible para otro paciente.</p>
+      <div class="acciones-confirmacion">
+        <button type="button" id="aceptar-cancelacion">Sí, cancelar turno</button>
+        <button type="button" id="volver-cancelacion">Conservar turno</button>
+      </div>
+    </section>
+    <section aria-labelledby="titulo-activos" class="seccion-turnos">
+      <h2 id="titulo-activos">📅 Mis turnos pendientes</h2>
+      <p id="mensaje-activos" class="nota-turnos"></p>
+      <div id="mis-turnos" class="turnos"></div>
+    </section>
+    <section aria-labelledby="titulo-historial" class="seccion-turnos">
+      <h2 id="titulo-historial">📁 Historial de turnos</h2>
+      <p class="nota-turnos">Acá aparecen las consultas atendidas, las ausencias y los turnos cuya fecha ya pasó.</p>
+      <p id="mensaje-historial" class="nota-turnos"></p>
+      <div id="turnos-historial" class="turnos"></div>
+    </section>
+  </main>
+  <script>
+    const API = "http://localhost:3001";
+    const contenedor = document.getElementById("mis-turnos");
+    const historialContenedor = document.getElementById("turnos-historial");
+    const mensaje = document.getElementById("mensaje-mis-turnos");
+    const aviso = document.getElementById("aviso-turnos");
+    const confirmacion = document.getElementById("confirmar-cancelacion");
+    const botonAceptar = document.getElementById("aceptar-cancelacion");
+    let turnoPendiente = null;
 
-    <main>
+    function obtenerPaciente() {
+      const id = Number(localStorage.getItem("id_paciente"));
+      return Number.isInteger(id) && id > 0 ? id : null;
+    }
 
-        <h1>Mis Turnos</h1>
+    function mostrarAviso(texto, tipo = "exito") {
+      aviso.textContent = texto;
+      aviso.className = `aviso-turnos ${tipo}`;
+      aviso.hidden = false;
+    }
 
-        <div id="mis-turnos" class="turnos"></div>
+    function cerrarConfirmacion() {
+      turnoPendiente = null;
+      confirmacion.hidden = true;
+    }
 
-    </main>
+    function fechaLegible(valor) {
+      const fecha = new Date(valor);
+      if (Number.isNaN(fecha.getTime())) return "Fecha no disponible";
+      return fecha.toLocaleString("es-AR", {dateStyle: "long", timeStyle: "short"});
+    }
 
-    <script>
-
-        async function cargarMisTurnos() {
-
-            const idPaciente =
-                localStorage.getItem("id_paciente");
-
-            if (!idPaciente) {
-
-                alert("No se encontró el paciente");
-
-                return;
-            }
-
-            try {
-
-                const respuesta =
-                    await fetch(
-                        `http://localhost:3001/turnos/paciente/${idPaciente}`
-                    );
-
-                if (!respuesta.ok) {
-                    throw new Error("No se pudieron cargar los turnos");
-                }
-
-                const turnos =
-                    await respuesta.json();
-
-                const contenedor =
-                    document.getElementById(
-                        "mis-turnos"
-                    );
-
-                contenedor.innerHTML = "";
-
-                if (turnos.length === 0) {
-
-                    contenedor.innerHTML = `
-                        <p>No tenés turnos reservados.</p>
-                    `;
-
-                    return;
-                }
-
-                turnos.forEach(turno => {
-
-                    const fecha =
-                        new Date(
-                            turno.fecha_turno
-                        );
-
-                    contenedor.innerHTML += `
-
-                       <div class="turno">
-
-    <h2>
-        Turno #${turno.id_turno}
-    </h2>
-
-    <p>
-        Fecha:
-        ${fecha.toLocaleDateString()}
-    </p>
-
-    <p>
-        Hora:
-        ${fecha.toLocaleTimeString()}
-    </p>
-
-    <p>
-        Día:
-        ${turno.Horario.dia}
-    </p>
-
-    <button
-        class="btn-cancelar mostrar"
-        onclick="cancelarTurno(${turno.id_turno})"
-    >
-        Cancelar turno
-    </button>
-
-</div>
-
-                    `;
-                });
-
-            } catch (error) {
-
-                console.error(error);
-
-                alert(
-                    "Error al cargar los turnos"
-                );
-            }
-
-        }
-
-        cargarMisTurnos();
-
-        async function cancelarTurno(idTurno) {
-
-    const confirmar =
-        confirm(
-            "¿Desea cancelar este turno?"
-        );
-
-    if (!confirmar) {
-
+    async function cargarMisTurnos() {
+      cerrarConfirmacion();
+      const idPaciente = obtenerPaciente();
+      contenedor.replaceChildren();
+      historialContenedor.replaceChildren();
+      document.getElementById("mensaje-activos").textContent = "";
+      document.getElementById("mensaje-historial").textContent = "";
+      mensaje.textContent = "Cargando tus turnos...";
+      if (!idPaciente) {
+        mensaje.textContent = "No se encontró tu cuenta de paciente.";
+        mostrarAviso("Iniciá sesión nuevamente para consultar tus turnos.", "error");
         return;
-    }
-
-    try {
-
-        const respuesta =
-            await fetch(
-                `http://localhost:3001/turnos/${idTurno}?id_paciente=${
-                    encodeURIComponent(localStorage.getItem("id_paciente"))
-                }`,
-                {
-                    method: "DELETE"
-                }
-            );
-
-        const datos =
-            await respuesta.json();
-
-        if (!respuesta.ok) {
-
-            alert(datos.mensaje);
-
-            return;
+      }
+      try {
+        const respuesta = await fetch(`${API}/turnos/paciente/${encodeURIComponent(idPaciente)}`);
+        if (!respuesta.ok) throw new Error(`No se pudieron cargar los turnos (HTTP ${respuesta.status}).`);
+        const turnos = await respuesta.json();
+        if (!Array.isArray(turnos)) throw new Error("La respuesta de turnos no tiene el formato esperado.");
+        const esFinalizado = turno => ["atendido", "no_asistio"].includes(turno.estado);
+        const esHistorico = turno => esFinalizado(turno) || new Date(turno.fecha_turno).getTime() < Date.now();
+        const activos = turnos.filter(turno => !esHistorico(turno))
+          .sort((a,b) => new Date(a.fecha_turno) - new Date(b.fecha_turno));
+        const historicos = turnos.filter(esHistorico)
+          .sort((a,b) => new Date(b.fecha_turno) - new Date(a.fecha_turno));
+        document.getElementById("mensaje-activos").textContent = activos.length ? `${activos.length} turno(s) pendiente(s).` : "No tenés turnos pendientes.";
+        document.getElementById("mensaje-historial").textContent = historicos.length ? `${historicos.length} turno(s) en el historial.` : "Todavía no hay turnos anteriores.";
+        mensaje.textContent = turnos.length === 0 ? "Todavía no tenés turnos reservados." : `Tenés ${turnos.length} turno${turnos.length === 1 ? "" : "s"} registrado${turnos.length === 1 ? "" : "s"}.`;
+        for (const turno of [...activos, ...historicos]) {
+          const tarjeta = document.createElement("article");
+          tarjeta.className = "turno";
+          const titulo = document.createElement("h2");
+          titulo.textContent = `Turno #${turno.id_turno}`;
+          const fecha = document.createElement("p");
+          fecha.textContent = `📅 ${fechaLegible(turno.fecha_turno)}`;
+          const dia = document.createElement("p");
+          dia.textContent = `Día de atención: ${turno.Horario?.dia || "No disponible"}`;
+          const estado = document.createElement("span");
+          estado.className = "estado-reserva";
+          const nombres = {reservado:"🔵 Reservado",en_espera:"🟡 En espera",en_consulta:"🩺 En consulta",atendido:"✅ Atendido",no_asistio:"🔴 No asistió"};
+          estado.textContent = nombres[turno.estado] || (turno.estado ? `Estado: ${turno.estado}` : "🔵 Reservado");
+          tarjeta.append(titulo, fecha, dia, estado);
+          const puedeCancelar = (!turno.estado || turno.estado === "reservado") && new Date(turno.fecha_turno).getTime() > Date.now();
+          if (puedeCancelar) {
+            const boton = document.createElement("button");
+            boton.type = "button";
+            boton.className = "btn-cancelar-moderno";
+            boton.textContent = "Cancelar turno";
+            boton.addEventListener("click", () => {
+              turnoPendiente = turno;
+              document.getElementById("resumen-cancelacion").textContent = `Turno #${turno.id_turno} — ${fechaLegible(turno.fecha_turno)}`;
+              confirmacion.hidden = false;
+              confirmacion.scrollIntoView({behavior:"smooth",block:"nearest"});
+            });
+            tarjeta.appendChild(boton);
+          }
+          (esHistorico(turno) ? historialContenedor : contenedor).appendChild(tarjeta);
         }
-
-        alert(
-            "Turno cancelado correctamente"
-        );
-
-        cargarMisTurnos();
-
-    } catch (error) {
-
+      } catch (error) {
         console.error(error);
-
-        alert(
-            "Error al cancelar el turno"
-        );
+        mensaje.textContent = "No fue posible cargar los turnos.";
+        mostrarAviso(error.message || "Error de conexión con el servidor.", "error");
+      }
     }
-}
 
-    </script>
+    async function cancelarTurno() {
+      if (!turnoPendiente) return;
+      const idPaciente = obtenerPaciente();
+      if (!idPaciente) {
+        cerrarConfirmacion();
+        mostrarAviso("La sesión de paciente no está disponible.", "error");
+        return;
+      }
+      const idTurno = turnoPendiente.id_turno;
+      botonAceptar.disabled = true;
+      botonAceptar.textContent = "Cancelando...";
+      try {
+        const respuesta = await fetch(`${API}/turnos/${encodeURIComponent(idTurno)}?id_paciente=${encodeURIComponent(idPaciente)}`, {method:"DELETE"});
+        const tipo = respuesta.headers.get("content-type") || "";
+        const datos = tipo.includes("application/json") ? await respuesta.json() : {};
+        if (!respuesta.ok) throw new Error(datos.mensaje || `No se pudo cancelar el turno (HTTP ${respuesta.status}).`);
+        await cargarMisTurnos();
+        mostrarAviso("✅ Turno cancelado correctamente.");
+      } catch (error) {
+        console.error(error);
+        cerrarConfirmacion();
+        mostrarAviso(error.message || "No se pudo cancelar el turno.", "error");
+      } finally {
+        botonAceptar.disabled = false;
+        botonAceptar.textContent = "Sí, cancelar turno";
+      }
+    }
 
+    botonAceptar.addEventListener("click", cancelarTurno);
+    document.getElementById("volver-cancelacion").addEventListener("click", cerrarConfirmacion);
+    document.getElementById("actualizar-turnos").addEventListener("click", () => {
+      aviso.hidden = true;
+      cargarMisTurnos();
+    });
+    cargarMisTurnos();
+  </script>
 </body>
-
 </html>
