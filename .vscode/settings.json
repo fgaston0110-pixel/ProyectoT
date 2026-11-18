@@ -1,3 +1,5 @@
 {
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5501     //
 }
+
+//al usar la extencion Live Server para ver los cambios de de la pagina esta Crea un servidor local, Abre un navegador y muestra la pagina

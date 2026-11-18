@@ -69,6 +69,8 @@
             color: #cbd5e1;
         }
 
+        .resumen-calculo { margin-top: 18px; padding: 12px 16px; background:#172d52; border:1px solid #3b82f6; border-radius:10px; color:#bfdbfe; line-height:1.5; }
+
         .lista-horarios {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -136,7 +138,7 @@
 <body>
     <main class="principal">
         <h1>Mis horarios</h1>
-        <p>Definí tu jornada y cuántos pacientes vas a atender. Los turnos duran 30 minutos y se distribuyen automáticamente con pausas si hay tiempo libre.</p>
+        <p>Definí tu jornada y cuántos pacientes vas a atender. Indicá cuántos pacientes querés atender: calculamos la duración aproximada de cada turno (mínimo 5 minutos), distribuyendo pausas cuando sobran minutos.</p>
 
         <section class="seccion-horarios">
             <h2>Generar horarios de atención</h2>
@@ -166,14 +168,15 @@
                 </label>
 
                 <label class="campo-horario" for="cantidad-turnos">
-                    Cantidad de turnos (30 minutos cada uno)
-                    <input id="cantidad-turnos" name="cantidad_turnos" type="number" min="1" max="30" value="8" required>
+                    Cantidad de turnos
+                    <input id="cantidad-turnos" name="cantidad_turnos" type="number" min="1" max="288" value="8" required>
                 </label>
                 <div class="acciones-horario">
                     <button id="vista-previa-boton" type="button" class="secundario">Ver horarios generados</button>
                     <button id="guardar-horario" type="submit">Guardar todos los turnos</button>
                 </div>
             </form>
+            <p id="resumen-calculo" class="resumen-calculo" role="status" aria-live="polite">Completá la jornada para calcular la duración aproximada.</p>
             <div id="vista-previa" aria-live="polite"></div>
             <p id="mensaje" role="status"></p>
         </section>
@@ -329,48 +332,72 @@
 
         const botonPrevia = document.getElementById("vista-previa-boton");
         const vistaPrevia = document.getElementById("vista-previa");
-        const DURACION = 30;
+        const PASO = 5;
+        const resumenCalculo = document.getElementById("resumen-calculo");
 
         function calcularTurnos() {
             const dia = document.getElementById("dia").value;
             const inicioTexto = document.getElementById("hora-inicio").value;
             const finTexto = document.getElementById("hora-fin").value;
             const cantidad = Number(document.getElementById("cantidad-turnos").value);
-            if (!dia || !inicioTexto || !finTexto || !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 30) {
-                throw new Error("Completá el día, el rango y una cantidad de 1 a 30 turnos.");
+            if (!dia || !inicioTexto || !finTexto ||
+                !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 288) {
+                throw new Error("Completá día, horas y una cantidad válida de turnos (1 a 288).");
             }
-            if (!/^(?:[01]\d|2[0-3]):(?:00|30)$/.test(inicioTexto) ||
-                !/^(?:[01]\d|2[0-3]):(?:00|30)$/.test(finTexto)) {
-                throw new Error("Usá horas en punto o y media (08:00, 08:30...).");
+            const formatoHora = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+            if (!formatoHora.test(inicioTexto) || !formatoHora.test(finTexto)) {
+                throw new Error("Las horas deben tener formato HH:MM.");
             }
-            const aMinutos = (texto) => {
+            const aMinutos = texto => {
                 const [horas, minutos] = texto.split(":").map(Number);
                 return horas * 60 + minutos;
             };
-            const aHora = (minutos) =>
+            const aHora = minutos =>
                 `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
             const inicio = aMinutos(inicioTexto);
             const fin = aMinutos(finTexto);
-            const bloques = (fin - inicio) / DURACION;
-            if (inicio >= fin || !Number.isInteger(bloques) || cantidad > bloques) {
-                throw new Error("Los turnos no entran en la jornada indicada.");
+            const jornada = fin - inicio;
+            if (jornada < PASO || inicio % PASO !== 0 || fin % PASO !== 0) {
+                throw new Error("Elegí una jornada válida; inicio y fin deben ser múltiplos de 5 minutos.");
             }
-            const posiciones = Array.from({ length: cantidad }, (_, i) =>
-                cantidad === 1 ? 0 : Math.round(i * (bloques - 1) / (cantidad - 1))
-            );
-            return posiciones.map((posicion) => ({
-                inicio: aHora(inicio + posicion * DURACION),
-                fin: aHora(inicio + (posicion + 1) * DURACION)
-            }));
+            const bloquesTotales = jornada / PASO;
+            if (cantidad > bloquesTotales) {
+                throw new Error(`Como máximo entran ${bloquesTotales} turnos de 5 minutos en esa jornada.`);
+            }
+            const bloquesPorTurno = Math.floor(bloquesTotales / cantidad);
+            const duracion = bloquesPorTurno * PASO;
+            const bloquesRestantes = bloquesTotales - bloquesPorTurno * cantidad;
+            const turnos = Array.from({ length: cantidad }, (_, i) => {
+                const pausasAntes = cantidad === 1 ? 0 :
+                    Math.round(i * bloquesRestantes / (cantidad - 1));
+                const desde = inicio + (i * bloquesPorTurno + pausasAntes) * PASO;
+                return { inicio: aHora(desde), fin: aHora(desde + duracion) };
+            });
+            return { turnos, duracion, pausas: bloquesRestantes * PASO, jornada };
+        }
+
+        function actualizarResumen() {
+            try {
+                const { turnos, duracion, pausas, jornada } = calcularTurnos();
+                resumenCalculo.textContent = `${turnos.length} turnos · ${duracion} minutos estimados por paciente · ` +
+                    `${jornada} minutos de jornada · ${pausas} minutos libres distribuidos como pausas.`;
+            } catch (error) {
+                resumenCalculo.textContent = error.message;
+            }
+            vistaPrevia.replaceChildren(); // La vista anterior deja de ser válida al modificar valores.
+        }
+        for (const campo of ["dia", "hora-inicio", "hora-fin", "cantidad-turnos"]) {
+            document.getElementById(campo).addEventListener("input", actualizarResumen);
+            document.getElementById(campo).addEventListener("change", actualizarResumen);
         }
 
         function mostrarVistaPrevia() {
             mostrarMensaje("");
             vistaPrevia.replaceChildren();
             try {
-                const turnos = calcularTurnos();
+                const { turnos, duracion } = calcularTurnos();
                 const titulo = document.createElement("p");
-                titulo.textContent = `${turnos.length} horarios propuestos (todavía no se guardaron):`;
+                titulo.textContent = `${turnos.length} turnos propuestos de ${duracion} minutos cada uno (todavía no se guardaron):`;
                 const lista = document.createElement("ul");
                 turnos.forEach((turno) => {
                     const item = document.createElement("li");
@@ -414,7 +441,7 @@
                 const resultado = await respuesta.json();
                 if (!respuesta.ok) throw new Error(resultado.mensaje || "No se pudieron guardar los horarios.");
                 formulario.reset();
-                vistaPrevia.replaceChildren();
+                actualizarResumen();
                 await cargarHorarios();
                 mostrarMensaje(resultado.mensaje || "Horarios guardados correctamente.", "exito");
             } catch (error) {
@@ -426,6 +453,7 @@
             }
         });
 
+        actualizarResumen();
         cargarHorarios();
     </script>
 </body>

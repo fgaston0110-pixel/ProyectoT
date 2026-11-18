@@ -308,50 +308,54 @@ app.post("/horarios/generar", async (req, res) => {
     const { dia, hora_inicio, hora_fin } = req.body;
     const cantidad = Number(req.body.cantidad_turnos);
     const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-    const formatoHora = /^(?:[01]\d|2[0-3]):(?:00|30)$/;
+    const formatoHora = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
     const aMinutos = (hora) => {
-        const [horas, minutos] = hora.split(":").map(Number);
-        return horas * 60 + minutos;
+        const [h, m] = hora.split(":").map(Number);
+        return h * 60 + m;
     };
-    const aHora = (minutos) =>
-        `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
+    const aHora = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    const PASO = 5;
 
-    if (
-        !Number.isInteger(idProfesional) || idProfesional <= 0 ||
+    if (!Number.isInteger(idProfesional) || idProfesional <= 0 ||
         !dias.includes(dia) ||
         typeof hora_inicio !== "string" || !formatoHora.test(hora_inicio) ||
         typeof hora_fin !== "string" || !formatoHora.test(hora_fin) ||
-        !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 30
-    ) {
-        return res.status(400).json({
-            mensaje: "Completá profesional, día, horas en punto o media hora y cantidad de turnos (1 a 30)."
-        });
+        !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 288) {
+        return res.status(400).json({ mensaje: "Ingresá un profesional, día, horario y cantidad válidos." });
     }
-
     const inicio = aMinutos(hora_inicio);
     const fin = aMinutos(hora_fin);
-    const bloques = (fin - inicio) / DURACION_TURNO_MINUTOS;
-    if (inicio >= fin || !Number.isInteger(bloques) || cantidad > bloques) {
+    const minutosJornada = fin - inicio;
+    if (minutosJornada < PASO || inicio % PASO !== 0 || fin % PASO !== 0) {
+        return res.status(400).json({ mensaje: "La jornada debe ser posterior al inicio y usar múltiplos de 5 minutos." });
+    }
+    const totalBloques = minutosJornada / PASO;
+    if (cantidad > totalBloques) {
         return res.status(400).json({
-            mensaje: "La cantidad de consultas de 30 minutos no entra en el rango indicado."
+            mensaje: `En esa jornada entran como máximo ${totalBloques} turnos de ${PASO} minutos.`
         });
     }
 
-    // Reparte los turnos por toda la jornada; los bloques sobrantes quedan como pausas.
-    const posiciones = Array.from({ length: cantidad }, (_, i) =>
-        cantidad === 1 ? 0 : Math.round(i * (bloques - 1) / (cantidad - 1))
-    );
-    const nuevos = posiciones.map((posicion) => ({
-        id_profesional: idProfesional,
-        dia,
-        hora_inicio: aHora(inicio + posicion * DURACION_TURNO_MINUTOS),
-        hora_fin: aHora(inicio + (posicion + 1) * DURACION_TURNO_MINUTOS),
-        disponible: true
-    }));
+    // Duración estimada por consulta: se redondea hacia abajo a múltiplos de 5.
+    // Los minutos restantes se reparten como pausas entre los turnos.
+    const bloquesPorConsulta = Math.floor(totalBloques / cantidad);
+    const duracionMinutos = bloquesPorConsulta * PASO;
+    const bloquesLibres = totalBloques - bloquesPorConsulta * cantidad;
+    const nuevos = Array.from({ length: cantidad }, (_, i) => {
+        const pausaAcumulada = cantidad === 1 ? 0 :
+            Math.round(i * bloquesLibres / (cantidad - 1));
+        const desde = inicio + (i * bloquesPorConsulta + pausaAcumulada) * PASO;
+        return {
+            id_profesional: idProfesional,
+            dia,
+            hora_inicio: aHora(desde),
+            hora_fin: aHora(desde + duracionMinutos),
+            disponible: true
+        };
+    });
 
     try {
         const creados = await sequelize.transaction(async (transaction) => {
-            // Evita que dos solicitudes simultáneas creen los mismos horarios.
             await sequelize.query(
                 "SELECT pg_advisory_xact_lock(CAST(:idProfesional AS BIGINT))",
                 { replacements: { idProfesional }, transaction }
@@ -366,22 +370,22 @@ app.post("/horarios/generar", async (req, res) => {
                 where: { id_profesional: idProfesional, dia, disponible: true },
                 transaction
             });
-            const hayCruce = nuevos.some((nuevo) =>
-                existentes.some((existente) =>
-                    aMinutos(nuevo.hora_inicio) < aMinutos(existente.hora_fin) &&
-                    aMinutos(nuevo.hora_fin) > aMinutos(existente.hora_inicio)
-                )
-            );
+            const hayCruce = nuevos.some(nuevo => existentes.some(existente =>
+                aMinutos(nuevo.hora_inicio) < aMinutos(existente.hora_fin) &&
+                aMinutos(nuevo.hora_fin) > aMinutos(existente.hora_inicio)
+            ));
             if (hayCruce) {
-                const error = new Error(
-                    "Ya hay horarios cargados que se superponen ese día. No se modificó ninguno."
-                );
+                const error = new Error("Ya hay horarios activos que se superponen ese día. No se guardó ninguno.");
                 error.status = 409;
                 throw error;
             }
             return Horario.bulkCreate(nuevos, { transaction });
         });
-        res.status(201).json({ mensaje: `${creados.length} turnos generados.`, horarios: creados });
+        res.status(201).json({
+            mensaje: `${creados.length} turnos generados de aproximadamente ${duracionMinutos} minutos cada uno.`,
+            duracion_minutos: duracionMinutos,
+            horarios: creados
+        });
     } catch (error) {
         console.error("Error al generar horarios:", error);
         res.status(error.status || 500).json({
@@ -389,6 +393,7 @@ app.post("/horarios/generar", async (req, res) => {
         });
     }
 });
+
 
 app.get("/horario", async (req, res) => {
     try {
@@ -879,177 +884,94 @@ app.get("/atenciones", async (req, res) => {
 });
 
 app.post("/turnos", async (req, res) => {
-
     try {
-
         const idPaciente = Number(req.body.id_paciente);
         const idHorario = Number(req.body.id_horario);
-        const { fecha_turno } = req.body;
-
-        if (
-            !Number.isInteger(idPaciente) ||
-            idPaciente <= 0 ||
-            !Number.isInteger(idHorario) ||
-            idHorario <= 0 ||
-            !fecha_turno
-        ) {
-            return res.status(400).json({
-                mensaje: "Paciente, horario y fecha son obligatorios"
-            });
+        const fecha = new Date(req.body.fecha_turno);
+        if (!Number.isInteger(idPaciente) || idPaciente <= 0 ||
+            !Number.isInteger(idHorario) || idHorario <= 0 ||
+            !req.body.fecha_turno || Number.isNaN(fecha.getTime())) {
+            return res.status(400).json({ mensaje: "Paciente, horario y fecha válidos son obligatorios." });
         }
-
-        // 1. Buscamos el horario
-        const horario = await Horario.findByPk(idHorario);
-
-        if (!horario) {
-            return res.status(404).json({
-                mensaje: "El horario no existe"
-            });
+        if (fecha <= new Date() || fecha.getSeconds() !== 0 || fecha.getMilliseconds() !== 0) {
+            return res.status(400).json({ mensaje: "Seleccioná un turno futuro válido." });
         }
-
-        // 2. Comprobamos que el horario esté disponible
-        if (!horario.disponible) {
-            return res.status(400).json({
-                mensaje: "El horario no está disponible"
-            });
+        const [horario, paciente] = await Promise.all([
+            Horario.findByPk(idHorario), Paciente.findByPk(idPaciente)
+        ]);
+        if (!horario || !horario.disponible) {
+            return res.status(404).json({ mensaje: "El horario no existe o fue desactivado." });
         }
-
-        // 3. Comprobamos que el paciente exista
-        const paciente = await Paciente.findByPk(idPaciente);
-
         if (!paciente) {
-            return res.status(404).json({
-                mensaje: "El paciente no existe"
-            });
+            return res.status(404).json({ mensaje: "El paciente no existe." });
         }
-
-        // Convertimos la fecha recibida
-        const fecha = new Date(fecha_turno);
-
-        if (isNaN(fecha.getTime())) {
-            return res.status(400).json({
-                mensaje: "La fecha del turno no es válida"
-            });
+        const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+        if (dias[fecha.getDay()] !== horario.dia) {
+            return res.status(400).json({ mensaje: `El horario corresponde al día ${horario.dia}.` });
         }
-
-        if (fecha <= new Date()) {
-            return res.status(400).json({
-                mensaje: "La fecha del turno debe ser futura"
-            });
-        }
-
-        // 4. Cada turno ocupa un bloque de 30 minutos.
-        if (
-            fecha.getMinutes() % DURACION_TURNO_MINUTOS !== 0 ||
-            fecha.getSeconds() !== 0 ||
-            fecha.getMilliseconds() !== 0
-        ) {
-            return res.status(400).json({
-                mensaje: "Los turnos deben comenzar cada 30 minutos"
-            });
-        }
-
-        // 5. Comprobamos que la fecha corresponda al día del horario
-        const dias = [
-            "Domingo",
-            "Lunes",
-            "Martes",
-            "Miércoles",
-            "Jueves",
-            "Viernes",
-            "Sábado"
-        ];
-
-        const diaTurno = dias[fecha.getDay()];
-
-        if (diaTurno !== horario.dia) {
-            return res.status(400).json({
-                mensaje: `El horario corresponde al día ${horario.dia}`
-            });
-        }
-
-        // 6. El turno completo debe quedar dentro del horario profesional.
-        const minutosDesdeMedianoche = (hora) => {
-            const [horas, minutos] = hora.split(":").map(Number);
-            return horas * 60 + minutos;
+        const aMinutos = (hora) => {
+            const [h, m] = hora.split(":").map(Number);
+            return h * 60 + m;
         };
-        const inicioTurno = fecha.getHours() * 60 + fecha.getMinutes();
-        const finTurno = inicioTurno + DURACION_TURNO_MINUTOS;
-        const inicioHorario = minutosDesdeMedianoche(horario.hora_inicio);
-        const finHorario = minutosDesdeMedianoche(horario.hora_fin);
-
-        if (
-            inicioTurno < inicioHorario ||
-            finTurno > finHorario
-        ) {
-            return res.status(400).json({
-                mensaje: `El turno de ${DURACION_TURNO_MINUTOS} minutos debe quedar entre ${horario.hora_inicio} y ${horario.hora_fin}`
-            });
+        const inicioBloque = aMinutos(horario.hora_inicio);
+        const finBloque = aMinutos(horario.hora_fin);
+        const minutosFecha = fecha.getHours() * 60 + fecha.getMinutes();
+        // Impide que el paciente invente una hora dentro del bloque.
+        if (minutosFecha !== inicioBloque || finBloque <= inicioBloque) {
+            return res.status(400).json({ mensaje: "Elegí uno de los horarios definidos por el profesional." });
         }
+        const finNuevo = new Date(fecha.getTime() + (finBloque - inicioBloque) * 60000);
+        const comienzoDia = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+        const finDia = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate() + 1);
 
-        const duracionTurnoMs = DURACION_TURNO_MINUTOS * 60 * 1000;
-        const finNuevoTurno = new Date(fecha.getTime() + duracionTurnoMs);
-        const inicioMinimoExistente = new Date(fecha.getTime() - duracionTurnoMs);
-
-        // Serializamos las reservas del profesional para evitar cruces concurrentes.
-        const turno = await sequelize.transaction(async (transaction) => {
+        const turno = await sequelize.transaction(async transaction => {
             await sequelize.query(
                 "SELECT pg_advisory_xact_lock(CAST(:idProfesional AS BIGINT))",
-                {
-                    replacements: {
-                        idProfesional: horario.id_profesional
-                    },
-                    transaction
-                }
+                { replacements: { idProfesional: horario.id_profesional }, transaction }
             );
-
-            const turnoSuperpuesto = await Turno.findOne({
-                where: {
-                    fecha_turno: {
-                        [Op.gt]: inicioMinimoExistente,
-                        [Op.lt]: finNuevoTurno
-                    }
-                },
+            // Revisar de nuevo si fue desactivado mientras se esperaba el bloqueo.
+            const horarioActual = await Horario.findByPk(idHorario, { transaction });
+            if (!horarioActual || !horarioActual.disponible) {
+                const err = new Error("Este horario ya no está disponible.");
+                err.status = 409;
+                throw err;
+            }
+            const reservas = await Turno.findAll({
+                where: { fecha_turno: { [Op.gte]: comienzoDia, [Op.lt]: finDia } },
                 include: [{
                     model: Horario,
-                    where: {
-                        id_profesional: horario.id_profesional
-                    }
+                    required: true,
+                    where: { id_profesional: horario.id_profesional }
                 }],
                 transaction
             });
-
-            if (turnoSuperpuesto) {
-                const error = new Error(
-                    "Ese horario ya esta reservado, por favor elije otro horario"
-                );
-                error.name = "TurnoSuperpuestoError";
-                throw error;
+            const conflicto = reservas.some(reserva => {
+                const inicioExistente = new Date(reserva.fecha_turno).getTime();
+                const minutosExistente = aMinutos(reserva.Horario.hora_fin) -
+                    aMinutos(reserva.Horario.hora_inicio);
+                const finExistente = inicioExistente + minutosExistente * 60000;
+                return fecha.getTime() < finExistente && finNuevo.getTime() > inicioExistente;
+            });
+            if (conflicto) {
+                const err = new Error("Ese turno ya está reservado. Elegí otro horario.");
+                err.status = 409;
+                throw err;
             }
-
             return Turno.create({
                 id_paciente: idPaciente,
                 id_horario: idHorario,
                 fecha_turno: fecha
             }, { transaction });
         });
-
         res.status(201).json(turno);
-
     } catch (error) {
-        if (error.name === "TurnoSuperpuestoError") {
-            return res.status(409).json({
-                mensaje: error.message
-            });
-        }
-
-        res.status(500).json({
-            mensaje: error.message
+        console.error("Error al reservar turno:", error);
+        res.status(error.status || 500).json({
+            mensaje: error.status ? error.message : "No se pudo registrar el turno."
         });
-
     }
-
 });
+
 
 app.get("/turnos/paciente/:id_paciente", async (req, res) => {
     try {

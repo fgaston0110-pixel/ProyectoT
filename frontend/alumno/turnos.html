@@ -3,49 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elegir turno</title>
+  <title>Turnos disponibles</title>
   <link rel="stylesheet" href="../css/estilo2.css">
   <style>
     .cabecera-turnos { color:#e2e8f0; }
     .cabecera-turnos strong { color:#93c5fd; }
-    .filtro-fecha { display:flex; flex-wrap:wrap; gap:14px; padding:18px; border:1px solid #334155; border-radius:12px; background:#1e293b; }
-    .filtro-fecha label { display:flex; flex-direction:column; gap:8px; font-weight:bold; color:#e2e8f0; }
-    .filtro-fecha input { background:#f8fafc; color:#0f172a; padding:11px; font-size:16px; border-radius:8px; border:1px solid #94a3b8; }
-    #detalle-fecha { color:#cbd5e1; margin:18px 0 0; }
-    #mensaje-turnos { color:#e2e8f0; min-height:24px; margin-top:16px; }
-    #lista-turnos { margin-top:16px; }
-    #lista-turnos .turno { border:1px solid #334155; box-shadow:0 3px 10px rgba(0,0,0,.25); }
-    #lista-turnos .turno h2 { font-size:24px; }
-    .estado-turno { font-size:15px !important; font-weight:normal !important; }
+    .introduccion { color:#cbd5e1; line-height:1.6; margin:15px 0 24px; }
+    .dia-atencion { border:1px solid #334155; background:#1e293b; border-radius:14px; padding:18px; margin:20px 0; }
+    .dia-atencion h2 { color:#93c5fd; margin:0 0 6px; font-size:22px; }
+    .dia-atencion .resumen-dia { color:#cbd5e1; margin:0 0 14px; }
+    .horarios-dia { display:flex; flex-wrap:wrap; align-items:stretch; gap:14px; }
+    .horarios-dia .turno { flex:1 1 180px; max-width:260px; min-width:0; padding:16px; border:1px solid #475569; border-radius:12px; background:#0f172a; box-shadow:0 3px 10px rgba(0,0,0,.2); box-sizing:border-box; }
+    .horarios-dia .turno h3 { font-size:21px; color:#f8fafc; margin:0 0 8px; }
+    .horarios-dia .turno p { margin:7px 0; overflow-wrap:anywhere; }
+    .estado-turno { font-size:15px; font-weight:normal; }
     .estado-libre { color:#86efac !important; }
     .estado-ocupado { color:#fca5a5 !important; }
-    .estado-pasado { color:#cbd5e1 !important; }
+    .btn-turno { width:100%; min-height:42px; }
     .btn-turno:disabled { opacity:.55; cursor:not-allowed; transform:none; }
     .aviso { padding:13px 16px; border-radius:10px; margin:12px 0; border:1px solid #334155; background:#1e293b; color:#e2e8f0; }
     .aviso.ok { border-color:#16a34a; color:#bbf7d0; }
     .aviso.error { border-color:#dc2626; color:#fecaca; }
     .aviso[hidden], .confirmacion[hidden] { display:none; }
     .confirmacion { border:1px solid #60a5fa; border-radius:12px; padding:18px; margin-top:18px; background:#1e293b; color:#e2e8f0; }
+    .confirmacion h2 { color:#93c5fd; }
     .confirmacion .acciones { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; }
     .confirmacion button { border:0; border-radius:8px; padding:12px 18px; cursor:pointer; font-weight:700; }
     #confirmar-reserva { background:#2563eb; color:#fff; }
     #cancelar-reserva { background:#475569; color:#fff; }
     .confirmacion button:disabled { opacity:.5; cursor:wait; }
     .enlace-volver { display:inline-block; margin-top:22px; color:#93c5fd; }
+    @media (max-width:550px) { .horarios-dia .turno { flex-basis:100%; max-width:none; } }
   </style>
 </head>
 <body>
   <main>
-    <h1>Elegí un turno disponible</h1>
+    <h1>Turnos disponibles</h1>
     <p class="cabecera-turnos">Profesional: <strong id="nombre-medico">Cargando...</strong></p>
-    <div class="filtro-fecha">
-      <label for="fecha-elegida">Elegí el día de tu consulta
-        <input type="date" id="fecha-elegida" required>
-      </label>
-    </div>
-    <p id="detalle-fecha"></p>
-    <p id="mensaje-turnos" role="status" aria-live="polite"></p>
-    <div id="lista-turnos" class="turnos"></div>
+    <p class="introduccion">Estos son los próximos días en que atiende el profesional, con sus fechas y horarios ya establecidos. No necesitás elegir una fecha: seleccioná un turno disponible.</p>
+    <p id="mensaje-turnos" role="status" aria-live="polite">Cargando agenda...</p>
+    <div id="lista-dias" aria-label="Próximos días de atención"></div>
     <div id="aviso-reserva" class="aviso" role="status" aria-live="polite" hidden></div>
     <section id="confirmacion-reserva" class="confirmacion" hidden aria-label="Confirmar reserva">
       <h2>Confirmar turno</h2>
@@ -60,155 +57,177 @@
   <script>
     "use strict";
     const API = "http://localhost:3001";
+    // Mostramos la próxima ocurrencia de cada día habilitado, empezando mañana.
+    const DIAS_A_MOSTRAR = 7;
+    const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     const idProfesional = Number(localStorage.getItem("id_profesional"));
     const nombreMedico = localStorage.getItem("medicoSeleccionado") || "Profesional seleccionado";
-    const fechaElegida = document.getElementById("fecha-elegida");
-    const listaTurnos = document.getElementById("lista-turnos");
+    const listaDias = document.getElementById("lista-dias");
     const mensajeTurnos = document.getElementById("mensaje-turnos");
-    const detalleFecha = document.getElementById("detalle-fecha");
     const botonConfirmar = document.getElementById("confirmar-reserva");
-    let numeroConsulta = 0;
     let reservaPendiente = null;
+    let agendaCargando = false;
 
     document.getElementById("nombre-medico").textContent = nombreMedico;
 
     function fechaLocal(fecha) {
-      return `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,"0")}-${String(fecha.getDate()).padStart(2,"0")}`;
+      return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
     }
-    function horaCorta(hora) { return String(hora || "").slice(0,5); }
-    function diaDeFecha(yyyyMMdd) {
-      const [a,m,d] = yyyyMMdd.split("-").map(Number);
-      const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-      return dias[new Date(a,m-1,d,12).getDay()];
+    function horaCorta(hora) { return String(hora || "").slice(0, 5); }
+    function aMinutos(hora) { const [h, m] = horaCorta(hora).split(":").map(Number); return h * 60 + m; }
+    function normalizar(texto) { return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase(); }
+    function fechaLegible(fecha) {
+      return fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     }
-    function normalizar(texto) {
-      return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-    }
-    function mostrarAviso(texto, tipo="ok") {
+    function mostrarAviso(texto, tipo = "ok") {
       const aviso = document.getElementById("aviso-reserva");
       aviso.textContent = texto;
       aviso.className = `aviso ${tipo}`;
       aviso.hidden = false;
     }
     function ocultarAviso() { document.getElementById("aviso-reserva").hidden = true; }
-    function cerrarConfirmacion() {
-      reservaPendiente = null;
-      document.getElementById("confirmacion-reserva").hidden = true;
-    }
+    function cerrarConfirmacion() { reservaPendiente = null; document.getElementById("confirmacion-reserva").hidden = true; }
 
-    // GET /horario y GET /turnos son rutas que ya existen en tu backend.
-    // Si una ruta devuelve HTML (ej.: Cannot GET), avisamos en lugar de mostrar un error de JSON.
     async function obtenerJSON(ruta) {
       let respuesta;
       try { respuesta = await fetch(`${API}${ruta}`, { headers: { Accept: "application/json" } }); }
-      catch { throw new Error("No se pudo conectar con el servidor. Revisá que Node.js esté iniciado en el puerto 3001."); }
-      const tipo = respuesta.headers.get("content-type") || "";
-      if (!tipo.includes("application/json")) {
-        throw new Error(`La ruta ${ruta.split("?")[0]} no devolvió JSON (HTTP ${respuesta.status}). Revisá las rutas del backend.`);
+      catch { throw new Error("No se pudo conectar con el backend. Verificá que Node.js esté iniciado en el puerto 3001."); }
+      if (!(respuesta.headers.get("content-type") || "").includes("application/json")) {
+        throw new Error(`La ruta ${ruta} no devolvió JSON (HTTP ${respuesta.status}).`);
       }
       const datos = await respuesta.json();
       if (!respuesta.ok) throw new Error(datos.mensaje || `Error HTTP ${respuesta.status}`);
       return datos;
     }
 
-    function seOcupa(turno, horario, fecha) {
-      if (Number(turno.id_horario) !== Number(horario.id_horario)) return false;
-      // Las reservas canceladas o eliminadas no ocupan horario.
-      if (["cancelado", "cancelada"].includes(normalizar(turno.estado))) return false;
-      const instante = new Date(turno.fecha_turno);
-      return !Number.isNaN(instante.getTime()) && fechaLocal(instante) === fecha;
-    }
-
-    async function cargarDisponibilidad() {
-      const consulta = ++numeroConsulta;
-      cerrarConfirmacion();
-      ocultarAviso();
-      listaTurnos.replaceChildren();
-      detalleFecha.textContent = "";
-      const fecha = fechaElegida.value;
-      if (!Number.isInteger(idProfesional) || idProfesional <= 0) {
-        mensajeTurnos.textContent = "No se encontró el médico. Volvé a seleccionarlo.";
-        return;
-      }
-      if (!fecha) { mensajeTurnos.textContent = "Elegí una fecha para consultar."; return; }
-      if (fecha < fechaLocal(new Date())) { mensajeTurnos.textContent = "Elegí una fecha de hoy en adelante."; return; }
-      mensajeTurnos.textContent = "Buscando horarios disponibles...";
-      try {
-        const [todosHorarios, todosTurnos] = await Promise.all([
-          obtenerJSON("/horario"), obtenerJSON("/turnos")
-        ]);
-        if (consulta !== numeroConsulta) return;
-        if (!Array.isArray(todosHorarios) || !Array.isArray(todosTurnos)) {
-          throw new Error("El servidor devolvió un formato inesperado para horarios o turnos.");
-        }
-        const dia = diaDeFecha(fecha);
-        detalleFecha.textContent = `Turnos para el ${dia} ${fecha.split("-").reverse().join("/")}`;
-        const horarios = todosHorarios.filter(h =>
-          Number(h.id_profesional) === idProfesional &&
-          normalizar(h.dia) === normalizar(dia) &&
-          h.disponible !== false
-        ).sort((a,b) => String(a.hora_inicio).localeCompare(String(b.hora_inicio)));
-        if (horarios.length === 0) {
-          mensajeTurnos.textContent = "Este profesional no tiene horarios habilitados para ese día. Elegí otra fecha.";
-          return;
-        }
-        let libres = 0;
-        for (const horario of horarios) {
-          const inicio = horaCorta(horario.hora_inicio);
-          const fin = horaCorta(horario.hora_fin);
-          const fechaInicio = new Date(`${fecha}T${inicio}:00`);
-          const pasado = Number.isNaN(fechaInicio.getTime()) || fechaInicio <= new Date();
-          const ocupado = todosTurnos.some(turno => seOcupa(turno, horario, fecha));
-          const estado = pasado ? "pasado" : ocupado ? "ocupado" : "libre";
-          if (estado === "libre") libres++;
-          const tarjeta = document.createElement("div");
-          tarjeta.className = "turno";
-          const titulo = document.createElement("h2"); titulo.textContent = inicio;
-          const rango = document.createElement("p"); rango.textContent = `${inicio} a ${fin}`;
-          const etiqueta = document.createElement("p");
-          etiqueta.className = `estado-turno estado-${estado}`;
-          etiqueta.textContent = estado === "libre" ? "🟢 Disponible" : estado === "ocupado" ? "🔴 Ocupado" : "⚪ Horario pasado";
-          const boton = document.createElement("button");
-          boton.type = "button";
-          boton.className = "btn-turno";
-          boton.textContent = estado === "libre" ? "Reservar" : "No disponible";
-          boton.disabled = estado !== "libre";
-          if (estado === "libre") boton.addEventListener("click", () => prepararReserva(horario, fecha));
-          tarjeta.append(titulo, rango, etiqueta, boton);
-          listaTurnos.appendChild(tarjeta);
-        }
-        mensajeTurnos.textContent = libres
-          ? `Hay ${libres} turno${libres === 1 ? "" : "s"} disponible${libres === 1 ? "" : "s"}. Elegí uno para reservar.`
-          : "No quedan turnos disponibles para esta fecha.";
-      } catch (error) {
-        if (consulta !== numeroConsulta) return;
-        console.error(error);
-        mensajeTurnos.textContent = error.message;
-      }
+    function reservaOcupaHorario(reserva, horario, fecha, mapaHorarios) {
+      if (!reserva.fecha_turno || ["cancelado", "cancelada"].includes(normalizar(reserva.estado))) return false;
+      const inicioReservado = new Date(reserva.fecha_turno);
+      if (Number.isNaN(inicioReservado.getTime()) || fechaLocal(inicioReservado) !== fecha) return false;
+      const horarioReservado = mapaHorarios.get(Number(reserva.id_horario));
+      if (!horarioReservado || Number(horarioReservado.id_profesional) !== idProfesional) return false;
+      // Revisa solapamientos por si quedaron horarios antiguos de distinta duración.
+      const inicioA = aMinutos(horario.hora_inicio);
+      const finA = aMinutos(horario.hora_fin);
+      const inicioB = inicioReservado.getHours() * 60 + inicioReservado.getMinutes();
+      const duracionB = aMinutos(horarioReservado.hora_fin) - aMinutos(horarioReservado.hora_inicio);
+      return inicioA < inicioB + duracionB && finA > inicioB;
     }
 
     function prepararReserva(horario, fecha) {
       ocultarAviso();
       const idPaciente = Number(localStorage.getItem("id_paciente"));
       if (!Number.isInteger(idPaciente) || idPaciente <= 0) {
-        mostrarAviso("No se encontró tu paciente. Volvé a iniciar sesión.", "error"); return;
+        mostrarAviso("No se encontró tu paciente. Volvé a iniciar sesión.", "error");
+        return;
       }
-      if (fecha !== fechaElegida.value) return;
       reservaPendiente = { horario, fecha, idPaciente };
+      const [anio, mes, dia] = fecha.split("-").map(Number);
+      const fechaTexto = fechaLegible(new Date(anio, mes - 1, dia, 12));
       document.getElementById("resumen-reserva").textContent =
-        `${nombreMedico} — ${fecha.split("-").reverse().join("/")} — ${horaCorta(horario.hora_inicio)} a ${horaCorta(horario.hora_fin)}.`;
+        `${nombreMedico} — ${DIAS[new Date(anio, mes - 1, dia, 12).getDay()]} ${fechaTexto} — ${horaCorta(horario.hora_inicio)} a ${horaCorta(horario.hora_fin)}.`;
       document.getElementById("confirmacion-reserva").hidden = false;
-      document.getElementById("confirmacion-reserva").scrollIntoView({behavior:"smooth",block:"nearest"});
+      document.getElementById("confirmacion-reserva").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    async function cargarAgenda() {
+      if (agendaCargando) return;
+      agendaCargando = true;
+      cerrarConfirmacion();
+      ocultarAviso();
+      listaDias.replaceChildren();
+      if (!Number.isInteger(idProfesional) || idProfesional <= 0) {
+        mensajeTurnos.textContent = "No se encontró el profesional. Volvé a seleccionarlo.";
+        agendaCargando = false;
+        return;
+      }
+      mensajeTurnos.textContent = "Buscando los próximos días de atención...";
+      try {
+        const [todosHorarios, todosTurnos] = await Promise.all([
+          obtenerJSON("/horario"), obtenerJSON("/turnos")
+        ]);
+        if (!Array.isArray(todosHorarios) || !Array.isArray(todosTurnos)) {
+          throw new Error("El servidor devolvió un formato inesperado.");
+        }
+        const horarios = todosHorarios.filter(h =>
+          Number(h.id_profesional) === idProfesional && h.disponible !== false
+        );
+        const mapaHorarios = new Map(todosHorarios.map(h => [Number(h.id_horario), h]));
+        const hoy = new Date();
+        hoy.setHours(12, 0, 0, 0);
+        let diasCargados = 0;
+        let totalLibres = 0;
+
+        for (let desplazamiento = 1; desplazamiento <= DIAS_A_MOSTRAR; desplazamiento++) {
+          const fechaObj = new Date(hoy);
+          fechaObj.setDate(hoy.getDate() + desplazamiento);
+          const fecha = fechaLocal(fechaObj);
+          const dia = DIAS[fechaObj.getDay()];
+          const turnosDia = horarios.filter(h => normalizar(h.dia) === normalizar(dia))
+            .sort((a, b) => String(a.hora_inicio).localeCompare(String(b.hora_inicio)));
+          if (!turnosDia.length) continue;
+          diasCargados++;
+          const seccion = document.createElement("section");
+          seccion.className = "dia-atencion";
+          const titulo = document.createElement("h2");
+          titulo.textContent = `${dia} ${fechaLegible(fechaObj)}`;
+          const descripcion = document.createElement("p");
+          descripcion.className = "resumen-dia";
+          const contenedor = document.createElement("div");
+          contenedor.className = "horarios-dia";
+          let libresDia = 0;
+          for (const horario of turnosDia) {
+            const ocupado = todosTurnos.some(t => reservaOcupaHorario(t, horario, fecha, mapaHorarios));
+            if (!ocupado) { libresDia++; totalLibres++; }
+            const tarjeta = document.createElement("article");
+            tarjeta.className = "turno";
+            const hora = document.createElement("h3");
+            hora.textContent = horaCorta(horario.hora_inicio);
+            const rango = document.createElement("p");
+            rango.textContent = `${horaCorta(horario.hora_inicio)} a ${horaCorta(horario.hora_fin)}`;
+            const estado = document.createElement("p");
+            estado.className = `estado-turno estado-${ocupado ? "ocupado" : "libre"}`;
+            estado.textContent = ocupado ? "🔴 Ocupado" : "🟢 Disponible";
+            const boton = document.createElement("button");
+            boton.type = "button";
+            boton.className = "btn-turno";
+            boton.textContent = ocupado ? "No disponible" : "Reservar";
+            boton.disabled = ocupado;
+            if (!ocupado) boton.addEventListener("click", () => prepararReserva(horario, fecha));
+            tarjeta.append(hora, rango, estado, boton);
+            contenedor.appendChild(tarjeta);
+          }
+          descripcion.textContent = libresDia
+            ? `${libresDia} turno${libresDia === 1 ? "" : "s"} disponible${libresDia === 1 ? "" : "s"}`
+            : "Todos los turnos de este día están ocupados";
+          seccion.append(titulo, descripcion, contenedor);
+          listaDias.appendChild(seccion);
+        }
+        mensajeTurnos.textContent = !diasCargados
+          ? "El profesional no tiene días de atención habilitados durante los próximos 7 días."
+          : totalLibres
+            ? `Hay ${totalLibres} turno${totalLibres === 1 ? "" : "s"} disponible${totalLibres === 1 ? "" : "s"} desde mañana, en los días que atiende este profesional.`
+            : "No quedan turnos disponibles durante los próximos 7 días.";
+      } catch (error) {
+        console.error(error);
+        mensajeTurnos.textContent = error.message || "No se pudo cargar la agenda.";
+      } finally {
+        agendaCargando = false;
+      }
     }
 
     async function confirmarReserva() {
       if (!reservaPendiente || botonConfirmar.disabled) return;
       const { horario, fecha, idPaciente } = reservaPendiente;
-      if (fecha !== fechaElegida.value) { cerrarConfirmacion(); return; }
-      const [anio,mes,dia] = fecha.split("-").map(Number);
-      const [hora,minuto] = horaCorta(horario.hora_inicio).split(":").map(Number);
-      const fechaTurno = new Date(anio, mes-1, dia, hora, minuto);
-      if (fechaTurno <= new Date()) { cerrarConfirmacion(); await cargarDisponibilidad(); mostrarAviso("Ese horario ya pasó.","error"); return; }
+      const [anio, mes, dia] = fecha.split("-").map(Number);
+      const [hora, minuto] = horaCorta(horario.hora_inicio).split(":").map(Number);
+      const fechaTurno = new Date(anio, mes - 1, dia, hora, minuto);
+      if (fechaTurno <= new Date()) {
+        cerrarConfirmacion();
+        await cargarAgenda();
+        mostrarAviso("Ese horario ya pasó. Elegí otro.", "error");
+        return;
+      }
       botonConfirmar.disabled = true;
       botonConfirmar.textContent = "Reservando...";
       try {
@@ -217,17 +236,18 @@
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ id_paciente: idPaciente, id_horario: horario.id_horario, fecha_turno: fechaTurno.toISOString() })
         });
-        const tipo = respuesta.headers.get("content-type") || "";
-        if (!tipo.includes("application/json")) throw new Error(`El servidor no devolvió JSON al reservar (HTTP ${respuesta.status}).`);
+        if (!(respuesta.headers.get("content-type") || "").includes("application/json")) {
+          throw new Error(`El servidor no devolvió JSON al reservar (HTTP ${respuesta.status}).`);
+        }
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.mensaje || "No se pudo reservar el turno.");
         cerrarConfirmacion();
-        await cargarDisponibilidad();
-        mostrarAviso("✅ Turno reservado correctamente. Lo podés consultar en Mis turnos.");
+        await cargarAgenda();
+        mostrarAviso("✅ Turno reservado correctamente. Podés consultarlo en Mis turnos.");
       } catch (error) {
         console.error(error);
         cerrarConfirmacion();
-        await cargarDisponibilidad();
+        await cargarAgenda();
         mostrarAviso(error.message || "No se pudo realizar la reserva.", "error");
       } finally {
         botonConfirmar.disabled = false;
@@ -237,10 +257,7 @@
 
     document.getElementById("confirmar-reserva").addEventListener("click", confirmarReserva);
     document.getElementById("cancelar-reserva").addEventListener("click", cerrarConfirmacion);
-    fechaElegida.min = fechaLocal(new Date());
-    fechaElegida.value = fechaElegida.min;
-    fechaElegida.addEventListener("change", cargarDisponibilidad);
-    cargarDisponibilidad();
+    cargarAgenda();
   </script>
 </body>
 </html>
